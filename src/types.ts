@@ -450,6 +450,9 @@ export interface PublisherAgent extends Omit<PublisherAgentDraft, 'slug'> {
     max_cost_per_run: string | null;
     /** The highest cap the publisher may set. */
     max_cost_ceiling: string;
+    /** How far below zero the balance may go before test runs stop (USD). */
+    test_run_debt_limit: string;
+    test_runs_blocked: boolean;
     default_model: string | null;
     allowed_models: string[];
   };
@@ -503,6 +506,9 @@ export interface PublisherOverview {
     customers: number;
     live_agents: number;
   };
+  /** The balance is below the allowed debt, so test runs are stopped. */
+  test_runs_blocked: boolean;
+  test_run_debt_limit: string;
   daily: { date: string; earned: string; units: number }[];
   payouts: PublisherPayout[];
 }

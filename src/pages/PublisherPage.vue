@@ -97,8 +97,18 @@ onMounted(load);
     </div>
 
     <template v-else>
+      <div v-if="overview.test_runs_blocked" class="error-banner q-mb-md">
+        بدهی حساب شما از
+        <span class="ltr">{{ usd(overview.test_run_debt_limit) }}</span> بیشتر شده است؛ اجرای
+        آزمایشی تا جبران آن بسته است. اجرای مشتری‌ها ادامه دارد.
+      </div>
+      <div v-else-if="Number(overview.summary.balance) < 0" class="note-banner q-mb-md">
+        مانده شما منفی است. اگر بدهی از
+        <span class="ltr">{{ usd(overview.test_run_debt_limit) }}</span> بیشتر شود، اجرای آزمایشی
+        بسته می‌شود.
+      </div>
       <div class="tiles q-mb-lg">
-        <div class="tile accent">
+        <div class="tile accent" :class="{ negative: Number(overview.summary.balance) < 0 }">
           <div class="tile-value ltr">{{ usd(overview.summary.balance) }}</div>
           <div class="tile-label">مانده برای تسویه</div>
         </div>
@@ -261,6 +271,10 @@ onMounted(load);
 .tile.accent {
   border-color: rgb(50 148 106 / 50%);
   background: var(--brand-tint);
+}
+.tile.accent.negative {
+  border-color: rgb(226 90 90 / 50%);
+  background: rgb(226 90 90 / 10%);
 }
 .tile-value {
   font-size: 1.5rem;

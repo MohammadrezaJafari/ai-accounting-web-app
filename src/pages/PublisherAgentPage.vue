@@ -600,6 +600,11 @@ onBeforeUnmount(() => clearInterval(poll));
 
           <section>
             <h3>اجرای آزمایشی</h3>
+            <div v-if="agent.terms.test_runs_blocked" class="error-banner q-mb-md">
+              بدهی حساب شما از
+              <span class="ltr">{{ usd(agent.terms.test_run_debt_limit) }}</span> بیشتر شده است؛
+              اجرای آزمایشی تا جبران آن با فروش یا واریز بسته است. اجرای مشتری‌ها ادامه دارد.
+            </div>
             <p class="muted">
               ایجنت را با پارامترهای دلخواه اجرا کنید؛ اعتباری مصرف نمی‌شود و خروجی به جایی فرستاده
               نمی‌شود. سرویس شما درخواست را دقیقاً مثل اجرای مشتری می‌گیرد.
@@ -618,7 +623,11 @@ onBeforeUnmount(() => clearInterval(poll));
                   icon="play_arrow"
                   label="اجرای آزمایشی"
                   :loading="testing"
-                  :disable="!draft.endpoint_url || missingForTest.length > 0"
+                  :disable="
+                    !draft.endpoint_url ||
+                    missingForTest.length > 0 ||
+                    agent.terms.test_runs_blocked
+                  "
                   @click="runTest"
                 />
                 <span v-if="missingForTest.length" class="faint text-caption q-ml-sm">
