@@ -73,8 +73,8 @@ export const organizationRoles: Record<OrganizationRole, { label: string; descri
 export const agentRunStatuses: Record<string, { label: string; color: string; icon: string }> = {
   queued: { label: 'در صف', color: 'grey', icon: 'schedule' },
   running: { label: 'در حال اجرا', color: 'info', icon: 'autorenew' },
-  succeeded: { label: 'گزارش آماده', color: 'positive', icon: 'task_alt' },
-  empty: { label: 'خبر تازه نبود', color: 'grey', icon: 'inbox' },
+  succeeded: { label: 'تحویل شد', color: 'positive', icon: 'task_alt' },
+  empty: { label: 'چیز تازه‌ای نبود', color: 'grey', icon: 'inbox' },
   no_credits: { label: 'اعتبار تمام شده', color: 'warning', icon: 'credit_card_off' },
   failed: { label: 'ناموفق', color: 'negative', icon: 'error_outline' },
 };

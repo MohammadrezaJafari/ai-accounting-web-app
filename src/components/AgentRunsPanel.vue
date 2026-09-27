@@ -69,7 +69,7 @@ defineExpose({ refresh });
           <span class="run-title">{{ agentRunStatuses[run.status]?.label }}</span>
           <span class="run-time">
             {{ faDateTime(run.created_at) }}
-            <template v-if="run.items_found">، {{ faNumber(run.items_found) }} خبر</template>
+            <template v-if="run.units > 1">، {{ faNumber(run.units) }} واحد</template>
           </span>
         </span>
         <q-icon v-if="run.trigger === 'manual'" name="touch_app" size="15px" class="faint">
@@ -97,22 +97,17 @@ defineExpose({ refresh });
 
         <div v-if="selected.error" class="error-banner q-mb-md">{{ selected.error }}</div>
         <div v-if="selected.status === 'running' || selected.status === 'queued'" class="muted">
-          <q-spinner size="18px" class="q-mr-sm" /> در حال خواندن منابع و نوشتن گزارش…
+          <q-spinner size="18px" class="q-mr-sm" /> ایجنت در حال کار است…
         </div>
         <div v-if="selected.status === 'empty'" class="muted">
-          در این نوبت خبر تازه‌ای که با فیلترها بخواند پیدا نشد؛ اعتباری مصرف نشد.
+          در این نوبت چیز تازه‌ای پیدا نشد؛ اعتباری مصرف نشد.
         </div>
 
         <!-- eslint-disable-next-line vue/no-v-html -- sanitized by DOMPurify in renderMarkdown -->
         <div v-if="html" class="report" v-html="html" />
 
-        <div v-if="selected.meta" class="facts">
-          <span v-if="selected.meta.fetched !== undefined">
-            {{ faNumber(selected.meta.fetched) }} خبر از
-            {{ faNumber(selected.meta.sources ?? 0) }} منبع خوانده شد،
-            {{ faNumber(selected.meta.new ?? 0) }} تازه،
-            {{ faNumber(selected.meta.matched ?? 0) }} مرتبط.
-          </span>
+        <div v-if="selected.meta && Object.keys(selected.meta).length" class="facts">
+          <span v-for="note in selected.meta.notes ?? []" :key="note">{{ note }}</span>
           <span v-for="error in selected.meta.errors ?? []" :key="error" class="warn">
             <q-icon name="warning_amber" size="15px" /> {{ error }}
           </span>

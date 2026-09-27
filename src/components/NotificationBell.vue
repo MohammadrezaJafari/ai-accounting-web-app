@@ -32,7 +32,7 @@ function open(item: AppNotification): void {
       query: { run: data.agent_run_id },
     });
   } else if (data.type === 'agent_no_credits') {
-    void router.push('/agents');
+    void router.push('/store');
   } else {
     void router.push(`/apps/${data.app_id}`);
   }

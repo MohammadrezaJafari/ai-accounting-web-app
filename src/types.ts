@@ -243,12 +243,50 @@ export interface AgentPackage {
   unit_price: Usd;
 }
 
+export type ConfigFieldType =
+  | 'text'
+  | 'textarea'
+  | 'number'
+  | 'select'
+  | 'multiselect'
+  | 'tags'
+  | 'url'
+  | 'url_list'
+  | 'toggle'
+  | 'secret';
+
+export type ConfigValue = string | number | boolean | string[] | null;
+
+/** One parameter of an agent, defined in the admin panel (or the publisher's manifest). */
+export interface ConfigField {
+  key: string;
+  label: string;
+  type: ConfigFieldType;
+  required: boolean;
+  section: string | null;
+  hint: string | null;
+  placeholder: string | null;
+  default: ConfigValue;
+  options: { value: string; label: string }[];
+  min: number | null;
+  max: number | null;
+  max_items: number | null;
+}
+
 export interface Agent {
   id: number;
   slug: string;
   name: string;
+  tagline: string | null;
+  /** Markdown. */
   description: string | null;
+  /** Material icon name. */
+  icon: string;
+  category: string | null;
+  publisher: { name: string; url: string | null } | null;
   unit_name: string;
+  max_units_per_run: number;
+  config_schema: ConfigField[];
   /** Units the current organization has left. */
   credits: number;
   packages: AgentPackage[];
@@ -259,17 +297,7 @@ export interface AgentCatalog {
   delivery: { telegram_bot: string | null; bale_bot: string | null };
 }
 
-export interface NewsMonitorConfig {
-  sources: string[];
-  keywords: string[];
-  exclude_keywords: string[];
-  instructions: string | null;
-  max_items: number;
-  max_age_hours: number;
-  detail: 'brief' | 'detailed';
-  language: 'fa' | 'en';
-  notify_empty: boolean;
-}
+export type AgentConfig = Record<string, ConfigValue>;
 
 export type DeliveryType = 'telegram' | 'bale' | 'email' | 'webhook';
 
@@ -302,10 +330,9 @@ export interface AgentRun {
   items_found: number;
   error: string | null;
   meta: {
-    sources?: number;
-    fetched?: number;
-    new?: number;
-    matched?: number;
+    /** Lines from the agent about the run, e.g. what it checked. */
+    notes?: string[];
+    /** Warnings that did not stop the run. */
     errors?: string[];
     deliveries?: {
       destination_id: number;
@@ -324,12 +351,15 @@ export interface AgentRun {
 export interface AgentInstance {
   id: number;
   name: string;
-  agent: { id: number; slug: string; name: string; unit_name: string };
+  agent: { id: number; slug: string; name: string; icon: string; unit_name: string };
   app: { id: number; name: string };
-  config: NewsMonitorConfig;
+  /** Secret parameters come back empty; `secrets_set` says which have a saved value. */
+  config: AgentConfig;
+  secrets_set: string[];
   run_hours: number[];
   /** 0 = Sunday … 6 = Saturday; empty = every day. */
   run_days: number[];
+  notify_empty: boolean;
   is_active: boolean;
   last_run_at: string | null;
   next_run_at: string | null;
@@ -342,8 +372,9 @@ export interface AgentInstanceDraft {
   agent_id?: number;
   app_id: number | null;
   name: string;
-  config: NewsMonitorConfig;
+  config: AgentConfig;
   run_hours: number[];
   run_days: number[];
+  notify_empty: boolean;
   is_active?: boolean;
 }

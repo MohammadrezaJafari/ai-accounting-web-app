@@ -17,9 +17,10 @@ import { useAuthStore } from '../stores/auth';
 import type { Agent, AgentCatalog, AgentInstance, AgentInstanceDraft, App } from '../types';
 import AgentDestinationsPanel from '../components/AgentDestinationsPanel.vue';
 import AgentRunsPanel from '../components/AgentRunsPanel.vue';
-import NewsMonitorForm from '../components/NewsMonitorForm.vue';
+import AgentInstanceForm from '../components/AgentInstanceForm.vue';
+import { cloneConfig, defaultConfig, missingFields } from '../agentConfig';
 
-/** Create a news monitor, or read its reports, change its settings and destinations. */
+/** Set up an agent from the store, or read its outputs and change its settings and destinations. */
 const route = useRoute();
 const router = useRouter();
 const auth = useAuthStore();
@@ -39,20 +40,14 @@ const runsPanel = ref<InstanceType<typeof AgentRunsPanel> | null>(null);
 const draft = ref<AgentInstanceDraft>({
   app_id: null,
   name: '',
-  config: {
-    sources: [],
-    keywords: [],
-    exclude_keywords: [],
-    instructions: null,
-    max_items: 12,
-    max_age_hours: 48,
-    detail: 'brief',
-    language: 'fa',
-    notify_empty: false,
-  },
+  config: {},
   run_hours: [8],
   run_days: [],
+  notify_empty: false,
 });
+const missing = computed(() =>
+  missingFields(agent.value?.config_schema ?? [], draft.value.config, instance.value?.secrets_set),
+);
 const selectedRunId = route.query.run ? Number(route.query.run) : null;
 
 useMeta(() => ({
@@ -63,9 +58,10 @@ function fromInstance(value: AgentInstance): AgentInstanceDraft {
   return {
     app_id: value.app.id,
     name: value.name,
-    config: { ...value.config, instructions: value.config.instructions ?? null },
+    config: cloneConfig(value.config),
     run_hours: [...value.run_hours],
     run_days: [...value.run_days],
+    notify_empty: value.notify_empty,
   };
 }
 
@@ -79,6 +75,7 @@ async function load(): Promise<void> {
       agent.value =
         catalog.data.find((a) => a.id === Number(route.query.agent)) ?? catalog.data[0] ?? null;
       draft.value.app_id = appList[0]?.id ?? null;
+      draft.value.config = defaultConfig(agent.value?.config_schema ?? []);
       return;
     }
 
@@ -87,7 +84,7 @@ async function load(): Promise<void> {
     draft.value = fromInstance(instance.value);
   } catch (exception) {
     $q.notify({ type: 'negative', message: errorMessage(exception) });
-    await router.replace('/agents');
+    await router.replace(isNew.value ? '/store' : '/agents');
   }
 }
 
@@ -103,6 +100,7 @@ async function save(): Promise<void> {
       return;
     }
     instance.value = await updateAgentInstance(instance.value!.id, draft.value);
+    draft.value = fromInstance(instance.value);
     $q.notify({ type: 'positive', message: 'ذخیره شد.' });
   } catch (exception) {
     $q.notify({ type: 'negative', message: errorMessage(exception) });
@@ -155,11 +153,13 @@ onMounted(load);
     <div class="page-head">
       <div>
         <q-breadcrumbs class="faint text-caption q-mb-xs" active-color="grey">
-          <q-breadcrumbs-el label="ایجنت‌ها" to="/agents" />
-          <q-breadcrumbs-el :label="instance?.name ?? 'ایجنت جدید'" />
+          <q-breadcrumbs-el v-if="isNew" label="بازارچه" to="/store" />
+          <q-breadcrumbs-el v-else label="ایجنت‌های من" to="/agents" />
+          <q-breadcrumbs-el v-if="isNew && agent" :label="agent.name" :to="`/store/${agent.id}`" />
+          <q-breadcrumbs-el :label="instance?.name ?? 'راه‌اندازی'" />
         </q-breadcrumbs>
         <h1>
-          {{ instance?.name ?? `${agent?.name ?? 'ایجنت'} جدید` }}
+          {{ instance?.name ?? `راه‌اندازی «${agent?.name ?? 'ایجنت'}»` }}
           <q-badge
             v-if="instance && !instance.is_active"
             color="grey-8"
@@ -173,12 +173,14 @@ onMounted(load);
             · اجرای بعدی {{ faDateTime(instance.next_run_at) }}
           </template>
         </p>
-        <p v-else>{{ agent?.description }}</p>
+        <p v-else>{{ agent?.tagline }}</p>
       </div>
       <div v-if="instance" class="row items-center q-gutter-sm">
         <div v-if="agent" class="credits" :class="{ empty: agent.credits < 1 }">
           {{ faNumber(agent.credits) }} {{ agent.unit_name }} باقی‌مانده
-          <router-link v-if="agent.credits < 5" to="/agents" class="buy">خرید</router-link>
+          <router-link v-if="agent.credits < 5" :to="`/store/${agent.id}`" class="buy"
+            >خرید</router-link
+          >
         </div>
         <q-toggle
           v-if="canManage"
@@ -232,7 +234,13 @@ onMounted(load);
           @finished="refreshCredits"
         />
         <template v-else-if="tab === 'settings'">
-          <NewsMonitorForm v-model="draft" :apps="apps" :readonly="!canManage" />
+          <AgentInstanceForm
+            v-model="draft"
+            :apps="apps"
+            :fields="agent?.config_schema ?? []"
+            :secrets-set="instance?.secrets_set ?? []"
+            :readonly="!canManage"
+          />
           <div v-if="canManage" class="row items-center q-gutter-sm q-mt-xl">
             <q-btn
               unelevated
@@ -240,9 +248,12 @@ onMounted(load);
               class="btn-pill"
               :label="isNew ? 'ساخت ایجنت' : 'ذخیرهٔ تنظیمات'"
               :loading="saving"
-              :disable="!draft.name || !draft.app_id || !draft.config.sources.length"
+              :disable="!draft.name || !draft.app_id || missing.length > 0"
               @click="save"
             />
+            <span v-if="missing.length" class="faint text-caption">
+              لازم: {{ missing.join('، ') }}
+            </span>
             <q-space />
             <q-btn
               v-if="instance"

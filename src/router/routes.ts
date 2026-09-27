@@ -43,7 +43,13 @@ const routes: RouteRecordRaw[] = [
       {
         path: 'agents/:id(\\d+|new)',
         name: 'agent',
-        component: () => import('../pages/AgentMonitorPage.vue'),
+        component: () => import('../pages/AgentInstancePage.vue'),
+      },
+      { path: 'store', name: 'store', component: () => import('../pages/StorePage.vue') },
+      {
+        path: 'store/:agentId(\\d+)',
+        name: 'store-agent',
+        component: () => import('../pages/StoreAgentPage.vue'),
       },
       {
         path: 'invite/:token',
