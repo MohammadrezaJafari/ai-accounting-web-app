@@ -1,0 +1,153 @@
+@import '@fontsource/vazirmatn/400.css';
+@import '@fontsource/vazirmatn/500.css';
+@import '@fontsource/vazirmatn/700.css';
+@import '@fontsource/vazirmatn/800.css';
+
+:root {
+  --brand: #4f46e5;
+  --brand-strong: #4338ca;
+  --brand-tint: #eef2ff;
+  --navy: #0f172a;
+  --ink: #1e293b;
+  --muted: #64748b;
+  --faint: #94a3b8;
+  --line: #e2e8f0;
+  --line-soft: #f1f5f9;
+  --surface: #ffffff;
+  --bg: #f8fafc;
+  --success: #059669;
+  --success-tint: #ecfdf5;
+  --danger: #e11d48;
+  --radius: 14px;
+  --shadow: 0 1px 2px rgb(15 23 42 / 4%), 0 8px 24px rgb(15 23 42 / 5%);
+}
+
+body {
+  font-family: Vazirmatn, Tahoma, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+}
+
+h1,
+h2,
+h3 {
+  color: var(--navy);
+  letter-spacing: 0;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px 16px 48px;
+}
+
+.page-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+
+  h1 {
+    font-size: 1.5rem;
+    font-weight: 800;
+  }
+
+  p {
+    margin: 4px 0 0;
+    color: var(--muted);
+  }
+}
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.panel-pad {
+  padding: 20px;
+}
+
+.panel-title {
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+.grid-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.stat {
+  padding: 18px 20px;
+
+  .label {
+    color: var(--muted);
+    font-size: 0.85rem;
+  }
+
+  .value {
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: var(--navy);
+    margin-top: 6px;
+  }
+
+  .hint {
+    color: var(--faint);
+    font-size: 0.8rem;
+    margin-top: 2px;
+  }
+}
+
+.ltr {
+  /* rtl:ignore */
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  /* rtl:ignore */
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.code-block {
+  background: var(--navy);
+  color: #e2e8f0;
+  border-radius: 10px;
+  padding: 14px 16px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.82rem;
+  line-height: 1.7;
+  /* rtl:begin:ignore */
+  direction: ltr;
+  text-align: left;
+  /* rtl:end:ignore */
+  white-space: pre;
+  overflow-x: auto;
+  margin: 0;
+}
+
+.empty {
+  text-align: center;
+  color: var(--muted);
+  padding: 40px 16px;
+}
+
+.q-table th {
+  font-weight: 700;
+  color: var(--muted);
+}
