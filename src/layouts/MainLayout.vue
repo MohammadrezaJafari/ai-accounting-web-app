@@ -18,7 +18,7 @@ interface NavLink {
   to: string;
   label: string;
   icon: string;
-  permission?: Permission;
+  permission?: Permission | Permission[];
 }
 
 const allSections: { title: string; links: NavLink[] }[] = [
@@ -35,6 +35,12 @@ const allSections: { title: string; links: NavLink[] }[] = [
     links: [
       { to: '/store', label: 'بازارچه', icon: 'storefront' },
       { to: '/agents', label: 'ایجنت‌های من', icon: 'smart_toy' },
+      {
+        to: '/publisher',
+        label: 'پنل ناشر',
+        icon: 'rocket',
+        permission: ['publish-agents', 'manage-billing'],
+      },
     ],
   },
   {

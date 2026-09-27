@@ -33,6 +33,8 @@ function open(item: AppNotification): void {
     });
   } else if (data.type === 'agent_no_credits') {
     void router.push('/store');
+  } else if (data.type === 'publisher_review') {
+    void router.push(`/publisher/agents/${data.agent_id}`);
   } else {
     void router.push(`/apps/${data.app_id}`);
   }
@@ -41,6 +43,11 @@ function open(item: AppNotification): void {
 function icon(item: AppNotification): { name: string; color: string } {
   if (item.data.type === 'agent_report') return { name: 'feed', color: 'primary' };
   if (item.data.type === 'agent_no_credits') return { name: 'credit_card_off', color: 'warning' };
+  if (item.data.type === 'publisher_review') {
+    return ['approved', 'changes_applied'].includes(item.data.outcome ?? '')
+      ? { name: 'verified', color: 'positive' }
+      : { name: 'undo', color: 'negative' };
+  }
   return (item.data.level ?? 0) >= 100
     ? { name: 'block', color: 'negative' }
     : { name: 'warning_amber', color: 'warning' };

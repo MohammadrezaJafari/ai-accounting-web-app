@@ -11,7 +11,12 @@ export interface User {
 }
 
 export type Permission =
-  'manage-apps' | 'manage-keys' | 'manage-billing' | 'manage-members' | 'use-chat';
+  | 'manage-apps'
+  | 'manage-keys'
+  | 'manage-billing'
+  | 'manage-members'
+  | 'use-chat'
+  | 'publish-agents';
 
 export type OrganizationRole = 'owner' | 'developer' | 'billing';
 
@@ -68,7 +73,10 @@ export interface Budget {
 export interface AppNotification {
   id: string;
   data: {
-    type: 'spend_limit' | 'agent_report' | 'agent_no_credits';
+    type: 'spend_limit' | 'agent_report' | 'agent_no_credits' | 'publisher_review';
+    /** publisher_review: approved | rejected | changes_applied | changes_rejected */
+    outcome?: string;
+    agent_id?: number;
     level?: number;
     subject?: 'app' | 'key';
     app_id?: number;
@@ -377,4 +385,108 @@ export interface AgentInstanceDraft {
   run_days: number[];
   notify_empty: boolean;
   is_active?: boolean;
+}
+
+export type PublisherAgentStatus = 'draft' | 'pending_review' | 'approved' | 'rejected';
+
+export interface PublisherPackage {
+  units: number;
+  /** USD. */
+  price: string;
+}
+
+/** Fields of a listing its publisher edits. */
+export interface PublisherAgentDraft {
+  slug?: string;
+  name: string;
+  tagline: string | null;
+  description: string | null;
+  icon: string | null;
+  category: string | null;
+  unit_name: string;
+  max_units_per_run: number;
+  endpoint_url: string | null;
+  timeout_seconds: number;
+  run_deadline_minutes: number;
+  config_schema: ConfigField[];
+  packages: PublisherPackage[];
+}
+
+export interface PublisherAgentStats {
+  units: number;
+  revenue: string;
+  earned: string;
+  cost: string;
+  customers: number;
+  active_instances: number;
+  runs: Partial<Record<AgentRunStatus, number>>;
+  failure_rate: number | null;
+}
+
+/** A listing as its publisher sees it. */
+export interface PublisherAgent extends Omit<PublisherAgentDraft, 'slug'> {
+  id: number;
+  slug: string;
+  status: PublisherAgentStatus;
+  status_label: string;
+  is_live: boolean;
+  /** Changes to a live listing waiting for review. */
+  pending_changes: Partial<PublisherAgentDraft> | null;
+  review_note: string | null;
+  submitted_at: string | null;
+  reviewed_at: string | null;
+  signing_secret: string;
+  terms: {
+    revenue_share: number;
+    max_cost_per_run: string | null;
+    default_model: string | null;
+    allowed_models: string[];
+  };
+  stats?: PublisherAgentStats;
+  created_at: string;
+}
+
+export interface PublisherRun {
+  id: number;
+  status: AgentRunStatus;
+  trigger: 'schedule' | 'manual' | 'test';
+  units: number;
+  items_found: number;
+  error: string | null;
+  notes: string[];
+  warnings: string[];
+  cost: string;
+  duration_ms: number | null;
+  created_at: string;
+  report?: string | null;
+  data?: Record<string, unknown> | null;
+}
+
+export interface PublisherPayout {
+  id: number;
+  amount: string;
+  reference: string | null;
+  note: string | null;
+  paid_at: string;
+}
+
+export interface PublisherOverview {
+  profile: {
+    publisher_name: string | null;
+    publisher_url: string | null;
+    support_email: string | null;
+    /** Only for members who handle billing. */
+    payout_details: string | null;
+  };
+  summary: {
+    units: number;
+    revenue: string;
+    earned: string;
+    paid: string;
+    balance: string;
+    customers: number;
+    live_agents: number;
+  };
+  daily: { date: string; earned: string; units: number }[];
+  payouts: PublisherPayout[];
 }

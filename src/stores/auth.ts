@@ -13,9 +13,9 @@ export const useAuthStore = defineStore('auth', {
   state: (): AuthState => ({ user: null, organization: null, organizations: [], ready: false }),
   getters: {
     loggedIn: (state) => state.user !== null,
-    /** Whether the user's role in the current organization allows `permission`. */
-    can: (state) => (permission: Permission) =>
-      state.organization?.permissions.includes(permission) ?? false,
+    /** Whether the user's role in the current organization allows `permission` (any of a list). */
+    can: (state) => (permission: Permission | Permission[]) =>
+      [permission].flat().some((p) => state.organization?.permissions.includes(p) ?? false),
   },
   actions: {
     /** Resolve the current user from the stored token; safe to call repeatedly on the client. */

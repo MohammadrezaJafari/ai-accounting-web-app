@@ -45,6 +45,18 @@ const routes: RouteRecordRaw[] = [
         name: 'agent',
         component: () => import('../pages/AgentInstancePage.vue'),
       },
+      {
+        path: 'publisher',
+        name: 'publisher',
+        component: () => import('../pages/PublisherPage.vue'),
+        meta: { permission: ['publish-agents', 'manage-billing'] },
+      },
+      {
+        path: 'publisher/agents/:id(\\d+|new)',
+        name: 'publisher-agent',
+        component: () => import('../pages/PublisherAgentPage.vue'),
+        meta: { permission: 'publish-agents' },
+      },
       { path: 'store', name: 'store', component: () => import('../pages/StorePage.vue') },
       {
         path: 'store/:agentId(\\d+)',

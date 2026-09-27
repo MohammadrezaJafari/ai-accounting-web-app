@@ -5,6 +5,6 @@ declare module 'vue-router' {
   interface RouteMeta {
     auth?: boolean;
     /** The member's role must allow this in the current organization. */
-    permission?: Permission;
+    permission?: Permission | Permission[];
   }
 }

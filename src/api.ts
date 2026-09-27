@@ -1,5 +1,6 @@
 import type {
   AgentCatalog,
+  AgentConfig,
   AgentDestination,
   AgentInstance,
   AgentInstanceDraft,
@@ -19,6 +20,10 @@ import type {
   Organization,
   OrganizationRole,
   Paginated,
+  PublisherAgent,
+  PublisherAgentDraft,
+  PublisherOverview,
+  PublisherRun,
   Session,
   UsageLog,
   User,
@@ -279,3 +284,30 @@ export async function streamChat(
     }
   }
 }
+
+export const getPublisher = () => request<PublisherOverview>('/publisher');
+export const updatePublisher = (payload: Partial<PublisherOverview['profile']>) =>
+  patch<{ ok: boolean }>('/publisher', payload);
+export const listPublisherAgents = async () =>
+  (await request<{ data: PublisherAgent[] }>('/publisher/agents')).data;
+export const getPublisherAgent = async (id: number) =>
+  (await request<{ data: PublisherAgent }>(`/publisher/agents/${id}`)).data;
+export const createPublisherAgent = async (draft: PublisherAgentDraft) =>
+  (await post<{ data: PublisherAgent }>('/publisher/agents', draft)).data;
+export const updatePublisherAgent = async (id: number, draft: Partial<PublisherAgentDraft>) =>
+  (await patch<{ data: PublisherAgent }>(`/publisher/agents/${id}`, draft)).data;
+export const deletePublisherAgent = (id: number) => destroy(`/publisher/agents/${id}`);
+export const submitPublisherAgent = async (id: number) =>
+  (await post<{ data: PublisherAgent }>(`/publisher/agents/${id}/submit`)).data;
+export const pingPublisherAgent = (id: number) =>
+  post<{ ok: boolean; error: string | null }>(`/publisher/agents/${id}/ping`);
+export const rotatePublisherSecret = async (id: number) =>
+  (await post<{ data: PublisherAgent }>(`/publisher/agents/${id}/rotate-secret`)).data;
+export const startPublisherTestRun = async (id: number, config: AgentConfig) =>
+  (await post<{ data: AgentRun }>(`/publisher/agents/${id}/test-runs`, { config })).data;
+export const listPublisherRuns = async (id: number) =>
+  (await request<{ data: PublisherRun[] }>(`/publisher/agents/${id}/runs`)).data;
+export const getPublisherRun = async (id: number, runId: number) =>
+  (await request<{ data: PublisherRun }>(`/publisher/agents/${id}/runs/${runId}`)).data;
+export const importPublisherManifest = async (url: string) =>
+  (await post<{ data: Partial<PublisherAgentDraft> }>('/publisher/manifest', { url })).data;

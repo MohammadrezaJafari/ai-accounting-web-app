@@ -6,6 +6,8 @@ import { faDay, faNumber, usd } from '../format';
 const props = defineProps<{
   days: { day: string; charge: string; requests: number }[];
   range: number;
+  /** What `requests` counts, in the tooltip. */
+  countLabel?: string;
 }>();
 
 const hovered = ref<number | null>(null);
@@ -62,7 +64,7 @@ const active = computed(() => (hovered.value === null ? null : series.value[hove
       <div v-if="active" class="tooltip">
         <strong>{{ faDay(active.day) }}</strong>
         <span class="ltr">{{ usd(active.charge) }}</span>
-        <span class="muted">{{ faNumber(active.requests) }} درخواست</span>
+        <span class="muted">{{ faNumber(active.requests) }} {{ countLabel ?? 'درخواست' }}</span>
       </div>
     </div>
     <div class="labels">
