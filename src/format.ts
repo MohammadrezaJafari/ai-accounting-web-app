@@ -1,4 +1,4 @@
-import type { OrderStatus } from './types';
+import type { BudgetPeriod, OrderStatus, OrganizationRole } from './types';
 
 const faDigits = new Intl.NumberFormat('fa-IR');
 
@@ -56,6 +56,18 @@ export const orderStatuses: Record<OrderStatus, { label: string; color: string }
   paid: { label: 'پرداخت‌شده', color: 'positive' },
   cancelled: { label: 'لغوشده', color: 'grey' },
   failed: { label: 'ناموفق', color: 'negative' },
+};
+
+export const budgetPeriods: Record<BudgetPeriod, string> = {
+  total: 'کل',
+  daily: 'روزانه',
+  monthly: 'ماهانه',
+};
+
+export const organizationRoles: Record<OrganizationRole, { label: string; description: string }> = {
+  owner: { label: 'مالک', description: 'همهٔ کارها، از جمله اعضا و دعوت‌ها' },
+  developer: { label: 'توسعه‌دهنده', description: 'اپ‌ها، کلیدهای API و سقف کلیدها، چت' },
+  billing: { label: 'مالی', description: 'کیف پول، شارژ، سفارش‌ها و سقف هزینهٔ اپ‌ها' },
 };
 
 export const transactionTypes: Record<string, string> = {

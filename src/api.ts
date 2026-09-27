@@ -1,13 +1,20 @@
 import type {
   AiModel,
-  ChatMessage,
   ApiKey,
   ApiKeyDraft,
   App,
+  AppNotification,
+  BudgetPeriod,
   Catalog,
+  ChatMessage,
   Dashboard,
+  Invitation,
+  Member,
   Order,
+  Organization,
+  OrganizationRole,
   Paginated,
+  Session,
   UsageLog,
   User,
   WalletTransaction,
@@ -63,17 +70,76 @@ const destroy = (path: string) => request<{ ok: boolean }>(path, { method: 'DELE
 export const errorMessage = (exception: unknown, fallback = 'اتصال برقرار نشد.'): string =>
   exception instanceof ApiError ? exception.first : fallback;
 
-export const register = (name: string, email: string, password: string) =>
-  post<{ token: string; user: User }>('/auth/register', {
+type SessionPayload = {
+  user: User;
+  organization: { data?: Organization } | Organization;
+  organizations: { data?: Organization[] } | Organization[];
+};
+
+/** Resources may arrive wrapped in `data`; normalise to plain objects. */
+function toSession(payload: SessionPayload): Session {
+  const unwrap = <T>(value: { data?: T } | T): T =>
+    value && typeof value === 'object' && 'data' in value ? value.data : (value as T);
+  return {
+    user: payload.user,
+    organization: unwrap<Organization>(payload.organization),
+    organizations: unwrap<Organization[]>(payload.organizations),
+  };
+}
+
+export const register = async (
+  name: string,
+  email: string,
+  password: string,
+  organization: string | null,
+) => {
+  const body = await post<SessionPayload & { token: string }>('/auth/register', {
     name,
     email,
     password,
     password_confirmation: password,
+    organization,
   });
-export const login = (email: string, password: string) =>
-  post<{ token: string; user: User }>('/auth/login', { email, password });
+  return { token: body.token, ...toSession(body) };
+};
+export const login = async (email: string, password: string) => {
+  const body = await post<SessionPayload & { token: string }>('/auth/login', { email, password });
+  return { token: body.token, ...toSession(body) };
+};
 export const logout = () => post<{ ok: boolean }>('/auth/logout');
-export const me = async () => (await request<{ data: User }>('/auth/me')).data;
+export const me = async () => {
+  const body = await request<Omit<SessionPayload, 'user'> & { data: User }>('/auth/me');
+  return toSession({ ...body, user: body.data });
+};
+
+export const listOrganizations = async () =>
+  (await request<{ data: Organization[] }>('/organizations')).data;
+export const createOrganization = async (name: string) =>
+  (await post<{ data: Organization }>('/organizations', { name })).data;
+export const switchOrganization = async (id: number) =>
+  (await post<{ data: Organization }>(`/organizations/${id}/switch`)).data;
+export const renameOrganization = async (name: string) =>
+  (await patch<{ data: Organization }>('/organization', { name })).data;
+
+export const listMembers = async () =>
+  (await request<{ data: Member[] }>('/organization/members')).data;
+export const updateMember = async (userId: number, role: OrganizationRole) =>
+  (await patch<{ data: Member }>(`/organization/members/${userId}`, { role })).data;
+export const removeMember = (userId: number) => destroy(`/organization/members/${userId}`);
+
+export const listInvitations = async () =>
+  (await request<{ data: Invitation[] }>('/organization/invitations')).data;
+export const createInvitation = async (email: string, role: OrganizationRole) =>
+  (await post<{ data: Invitation }>('/organization/invitations', { email, role })).data;
+export const deleteInvitation = (id: number) => destroy(`/organization/invitations/${id}`);
+export const getInvitation = async (token: string) =>
+  (await request<{ data: Invitation }>(`/invitations/${encodeURIComponent(token)}`)).data;
+export const acceptInvitation = async (token: string) =>
+  (await post<{ data: Organization }>(`/invitations/${encodeURIComponent(token)}/accept`)).data;
+
+export const listNotifications = () =>
+  request<{ data: AppNotification[]; unread_count: number }>('/notifications');
+export const markNotificationsRead = () => post<{ ok: boolean }>('/notifications/read');
 
 export const dashboard = (days = 30) => request<Dashboard>(`/dashboard?days=${days}`);
 
@@ -87,7 +153,10 @@ export const createApp = async (name: string, description: string | null) =>
   (await post<{ data: App }>('/apps', { name, description })).data;
 export const updateApp = async (
   id: number,
-  payload: Partial<Pick<App, 'name' | 'description' | 'is_active'>>,
+  payload: Partial<Pick<App, 'name' | 'description' | 'is_active'>> & {
+    spend_limit?: string | null;
+    spend_limit_period?: Exclude<BudgetPeriod, 'total'>;
+  },
 ) => (await patch<{ data: App }>(`/apps/${id}`, payload)).data;
 export const deleteApp = (id: number) => destroy(`/apps/${id}`);
 

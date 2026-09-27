@@ -4,12 +4,15 @@ import { useMeta, useQuasar } from 'quasar';
 import { useRouter } from 'vue-router';
 import { createApp, errorMessage, listApps } from '../api';
 import { faNumber, usd } from '../format';
+import { useAuthStore } from '../stores/auth';
 import type { App } from '../types';
+import BudgetBar from '../components/BudgetBar.vue';
 
 useMeta({ title: 'اپ‌ها | پلتفرم توسعه‌دهندگان' });
 
 const $q = useQuasar();
 const router = useRouter();
+const auth = useAuthStore();
 const apps = ref<App[] | null>(null);
 const creating = ref(false);
 const draft = reactive({ name: '', description: '' });
@@ -47,6 +50,7 @@ onMounted(load);
         <p>هر اپ موجودی و کلیدهای API جداگانه دارد.</p>
       </div>
       <q-btn
+        v-if="auth.can('manage-apps')"
         unelevated
         no-caps
         class="btn-pill"
@@ -62,7 +66,14 @@ onMounted(load);
     <div v-else-if="!apps.length" class="panel empty">
       <q-icon name="apps" size="48px" class="faint" />
       <p class="q-mt-md">هنوز اپی نساخته‌اید. برای شروع یک اپ بسازید و برایش کلید API بگیرید.</p>
-      <q-btn unelevated no-caps class="btn-pill" label="ساخت اولین اپ" @click="creating = true" />
+      <q-btn
+        v-if="auth.can('manage-apps')"
+        unelevated
+        no-caps
+        class="btn-pill"
+        label="ساخت اولین اپ"
+        @click="creating = true"
+      />
     </div>
     <div v-else class="apps">
       <router-link
@@ -90,6 +101,7 @@ onMounted(load);
           </div>
           <div class="faint text-caption">{{ faNumber(app.api_keys_count ?? 0) }} کلید</div>
         </div>
+        <BudgetBar :budget="app" compact class="q-mt-md" />
       </router-link>
     </div>
 

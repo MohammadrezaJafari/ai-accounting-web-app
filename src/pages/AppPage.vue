@@ -3,22 +3,41 @@ import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useMeta, useQuasar } from 'quasar';
 import { useRoute, useRouter } from 'vue-router';
 import { deleteApp, errorMessage, getApp, listTransactions, updateApp } from '../api';
-import { faDateTime, transactionTypes, usd } from '../format';
-import type { App, WalletTransaction } from '../types';
+import { budgetPeriods, faDateTime, transactionTypes, usd } from '../format';
+import { useAuthStore } from '../stores/auth';
+import type { App, Permission, WalletTransaction } from '../types';
 import ApiKeysPanel from '../components/ApiKeysPanel.vue';
+import BudgetBar from '../components/BudgetBar.vue';
 import TopUpPanel from '../components/TopUpPanel.vue';
 import UsageTable from '../components/UsageTable.vue';
 
 const route = useRoute();
 const router = useRouter();
 const $q = useQuasar();
+const auth = useAuthStore();
+
+type Tab = 'keys' | 'topup' | 'transactions' | 'usage' | 'budget' | 'settings';
+const allTabs: { name: Tab; icon: string; label: string; permission?: Permission }[] = [
+  { name: 'keys', icon: 'key', label: 'کلیدهای API', permission: 'manage-keys' },
+  { name: 'topup', icon: 'account_balance_wallet', label: 'شارژ', permission: 'manage-billing' },
+  { name: 'transactions', icon: 'receipt_long', label: 'تراکنش‌ها', permission: 'manage-billing' },
+  { name: 'usage', icon: 'query_stats', label: 'مصرف' },
+  { name: 'budget', icon: 'savings', label: 'سقف هزینه' },
+  { name: 'settings', icon: 'settings', label: 'تنظیمات', permission: 'manage-apps' },
+];
+const tabs = allTabs.filter((t) => !t.permission || auth.can(t.permission));
 
 const appId = computed(() => Number(route.params.id));
 const app = ref<App | null>(null);
-const tab = ref<'keys' | 'topup' | 'transactions' | 'usage' | 'settings'>('keys');
+const tab = ref<Tab>(tabs[0]!.name);
 const transactions = ref<WalletTransaction[]>([]);
 const settings = reactive({ name: '', description: '' });
 const saving = ref(false);
+const budget = reactive<{ limit: string; period: 'daily' | 'monthly' }>({
+  limit: '',
+  period: 'monthly',
+});
+const savingBudget = ref(false);
 
 useMeta(() => ({ title: `${app.value?.name ?? 'اپ'} | پلتفرم توسعه‌دهندگان` }));
 
@@ -27,6 +46,8 @@ async function load(): Promise<void> {
     app.value = await getApp(appId.value);
     settings.name = app.value.name;
     settings.description = app.value.description ?? '';
+    budget.limit = app.value.spend_limit ?? '';
+    budget.period = app.value.spend_limit_period === 'daily' ? 'daily' : 'monthly';
   } catch (exception) {
     $q.notify({ type: 'negative', message: errorMessage(exception) });
     await router.replace('/apps');
@@ -49,6 +70,25 @@ async function save(): Promise<void> {
     $q.notify({ type: 'negative', message: errorMessage(exception) });
   } finally {
     saving.value = false;
+  }
+}
+
+async function saveBudget(limit: string | null): Promise<void> {
+  savingBudget.value = true;
+  try {
+    app.value = await updateApp(appId.value, {
+      spend_limit: limit === '' ? null : limit,
+      spend_limit_period: budget.period,
+    });
+    budget.limit = app.value.spend_limit ?? '';
+    $q.notify({
+      type: 'positive',
+      message: app.value.spend_limit ? 'سقف هزینه ذخیره شد.' : 'سقف هزینه برداشته شد.',
+    });
+  } catch (exception) {
+    $q.notify({ type: 'negative', message: errorMessage(exception) });
+  } finally {
+    savingBudget.value = false;
   }
 }
 
@@ -95,7 +135,9 @@ onMounted(load);
           <div class="value ltr" :class="{ 'text-negative': Number(app.balance) <= 0 }">
             {{ usd(app.balance) }}
           </div>
+          <BudgetBar :budget="app" compact class="q-mt-sm" />
           <q-btn
+            v-if="auth.can('manage-billing')"
             flat
             dense
             no-caps
@@ -118,11 +160,7 @@ onMounted(load);
           outside-arrows
           mobile-arrows
         >
-          <q-tab name="keys" icon="key" label="کلیدهای API" />
-          <q-tab name="topup" icon="account_balance_wallet" label="شارژ" />
-          <q-tab name="transactions" icon="receipt_long" label="تراکنش‌ها" />
-          <q-tab name="usage" icon="query_stats" label="مصرف" />
-          <q-tab name="settings" icon="settings" label="تنظیمات" />
+          <q-tab v-for="t in tabs" :key="t.name" :name="t.name" :icon="t.icon" :label="t.label" />
         </q-tabs>
         <q-separator />
         <q-tab-panels v-model="tab" animated class="tab-panels">
@@ -170,6 +208,73 @@ onMounted(load);
           <q-tab-panel name="usage">
             <UsageTable :filters="{ app_id: appId }" hide-app />
           </q-tab-panel>
+          <q-tab-panel name="budget">
+            <div class="budget-tab">
+              <p class="muted q-mt-none">
+                وقتی مصرف این اپ در دوره به سقف برسد، درخواست‌هایش تا شروع دورهٔ بعد با خطای 402 رد
+                می‌شوند. در ۸۰٪ و ۱۰۰٪ سقف به مالک و نقش مالی هشدار داده می‌شود. ماه، ماه شمسی است.
+              </p>
+              <div v-if="app.spend_limit" class="panel panel-pad q-mb-lg">
+                <BudgetBar :budget="app" />
+              </div>
+              <div v-else class="faint q-mb-lg">
+                این اپ سقف هزینه ندارد و تا وقتی موجودی دارد کار می‌کند.
+              </div>
+              <q-form
+                v-if="auth.can('manage-billing')"
+                class="budget-form"
+                @submit.prevent="saveBudget(budget.limit)"
+              >
+                <q-input
+                  v-model="budget.limit"
+                  outlined
+                  dense
+                  type="number"
+                  min="0"
+                  step="any"
+                  prefix="$"
+                  label="سقف هزینه"
+                  input-class="ltr"
+                />
+                <q-select
+                  v-model="budget.period"
+                  outlined
+                  dense
+                  emit-value
+                  map-options
+                  label="دوره"
+                  :options="[
+                    { value: 'monthly', label: budgetPeriods.monthly },
+                    { value: 'daily', label: budgetPeriods.daily },
+                  ]"
+                />
+                <q-btn
+                  type="submit"
+                  unelevated
+                  no-caps
+                  class="btn-pill"
+                  label="ذخیره"
+                  :loading="savingBudget"
+                  :disable="!budget.limit"
+                />
+                <q-btn
+                  v-if="app.spend_limit"
+                  flat
+                  no-caps
+                  color="grey"
+                  label="برداشتن سقف"
+                  @click="saveBudget(null)"
+                />
+              </q-form>
+              <div v-else class="note-banner">
+                سقف هزینهٔ اپ را فقط مالک یا نقش مالی سازمان می‌تواند تغییر دهد.
+              </div>
+              <p v-if="auth.can('manage-keys')" class="faint text-caption q-mt-lg">
+                برای هر کلید هم می‌توانید سقف جدا (کل، روزانه یا ماهانه) بگذارید:
+                <a class="text-primary" href="#" @click.prevent="tab = 'keys'">کلیدهای API</a>
+              </p>
+            </div>
+          </q-tab-panel>
           <q-tab-panel name="settings">
             <q-form class="column q-gutter-md" style="max-width: 520px" @submit.prevent="save">
               <q-input v-model="settings.name" outlined label="نام اپ" />
@@ -208,8 +313,22 @@ onMounted(load);
 
 <style scoped>
 .balance {
-  min-width: 220px;
+  min-width: 240px;
   background: var(--surface-2);
+}
+.budget-tab {
+  max-width: 640px;
+}
+.budget-form {
+  display: grid;
+  grid-template-columns: minmax(140px, 1fr) 140px auto auto;
+  gap: 12px;
+  align-items: center;
+}
+@media (max-width: 599px) {
+  .budget-form {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 .tabs {
   color: var(--muted);

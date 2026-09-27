@@ -1,18 +1,28 @@
 import { defineStore } from 'pinia';
-import { TOKEN_KEY, logout as apiLogout, me } from '../api';
-import type { User } from '../types';
+import { TOKEN_KEY, logout as apiLogout, me, switchOrganization } from '../api';
+import type { Organization, Permission, Session, User } from '../types';
+
+interface AuthState {
+  user: User | null;
+  organization: Organization | null;
+  organizations: Organization[];
+  ready: boolean;
+}
 
 export const useAuthStore = defineStore('auth', {
-  state: (): { user: User | null; ready: boolean } => ({ user: null, ready: false }),
+  state: (): AuthState => ({ user: null, organization: null, organizations: [], ready: false }),
   getters: {
     loggedIn: (state) => state.user !== null,
+    /** Whether the user's role in the current organization allows `permission`. */
+    can: (state) => (permission: Permission) =>
+      state.organization?.permissions.includes(permission) ?? false,
   },
   actions: {
     /** Resolve the current user from the stored token; safe to call repeatedly on the client. */
     async restore(): Promise<void> {
       if (this.ready) return;
       try {
-        if (localStorage.getItem(TOKEN_KEY)) this.user = await me();
+        if (localStorage.getItem(TOKEN_KEY)) this.apply(await me());
       } catch {
         localStorage.removeItem(TOKEN_KEY);
         this.user = null;
@@ -20,15 +30,30 @@ export const useAuthStore = defineStore('auth', {
         this.ready = true;
       }
     },
-    signIn(token: string, user: User): void {
+    /** Reload the session, e.g. after joining, creating or switching organizations. */
+    async refresh(): Promise<void> {
+      this.apply(await me());
+    },
+    async switchTo(organizationId: number): Promise<void> {
+      await switchOrganization(organizationId);
+      await this.refresh();
+    },
+    signIn(token: string, session: Session): void {
       localStorage.setItem(TOKEN_KEY, token);
-      this.user = user;
+      this.apply(session);
       this.ready = true;
+    },
+    apply(session: Session): void {
+      this.user = session.user;
+      this.organization = session.organization;
+      this.organizations = session.organizations;
     },
     async signOut(): Promise<void> {
       await apiLogout().catch(() => undefined);
       localStorage.removeItem(TOKEN_KEY);
       this.user = null;
+      this.organization = null;
+      this.organizations = [];
     },
   },
 });

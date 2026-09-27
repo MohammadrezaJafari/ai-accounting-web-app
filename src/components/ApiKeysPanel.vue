@@ -11,8 +11,9 @@ import {
   listModels,
   updateKey,
 } from '../api';
-import { faDateTime, usd } from '../format';
-import type { AiModel, ApiKey, App } from '../types';
+import { budgetPeriods, faDateTime, usd } from '../format';
+import type { AiModel, ApiKey, App, BudgetPeriod } from '../types';
+import BudgetBar from './BudgetBar.vue';
 import CodeCard from './CodeCard.vue';
 import CopyText from './CopyText.vue';
 
@@ -27,14 +28,27 @@ const dialog = ref(false);
 const busy = ref(false);
 const editing = ref<ApiKey | null>(null);
 const created = ref<string | null>(null);
-const draft = reactive({
-  app_id: null as number | null,
+const draft = reactive<{
+  app_id: number | null;
+  name: string;
+  allowed_providers: string[];
+  allowed_models: string[];
+  spend_limit: string;
+  spend_limit_period: BudgetPeriod;
+  expires_at: string;
+}>({
+  app_id: null,
   name: '',
-  allowed_providers: [] as string[],
-  allowed_models: [] as string[],
+  allowed_providers: [],
+  allowed_models: [],
   spend_limit: '',
+  spend_limit_period: 'total',
   expires_at: '',
 });
+const periodOptions = (Object.keys(budgetPeriods) as BudgetPeriod[]).map((value) => ({
+  value,
+  label: budgetPeriods[value],
+}));
 
 const providerOptions = computed(() => {
   const seen = new Map<string, string>();
@@ -72,6 +86,7 @@ function open(key: ApiKey | null): void {
   draft.allowed_providers = key?.allowed_providers ?? [];
   draft.allowed_models = key?.allowed_models ?? [];
   draft.spend_limit = key?.spend_limit ?? '';
+  draft.spend_limit_period = key?.spend_limit_period ?? 'total';
   draft.expires_at = key?.expires_at?.slice(0, 10) ?? '';
   dialog.value = true;
 }
@@ -87,6 +102,7 @@ async function save(): Promise<void> {
     allowed_providers: draft.allowed_providers.length ? draft.allowed_providers : null,
     allowed_models: draft.allowed_models.length ? draft.allowed_models : null,
     spend_limit: draft.spend_limit === '' ? null : String(draft.spend_limit),
+    spend_limit_period: draft.spend_limit_period,
     expires_at: draft.expires_at || null,
   };
   try {
@@ -190,15 +206,13 @@ onMounted(load);
           >
         </div>
         <div class="key-spend">
-          <div class="faint text-caption">هزینه‌شده</div>
-          <div>
-            <span class="ltr"
-              >{{ usd(key.spent)
-              }}<span v-if="key.spend_limit" class="faint">
-                / {{ usd(key.spend_limit) }}</span
-              ></span
-            >
-          </div>
+          <BudgetBar v-if="key.spend_limit !== null" :budget="key" compact />
+          <template v-else>
+            <div class="faint text-caption">هزینه‌شده (بدون سقف)</div>
+            <div>
+              <span class="ltr">{{ usd(key.spent) }}</span>
+            </div>
+          </template>
         </div>
         <div class="key-used gt-sm">
           <div class="faint text-caption">آخرین استفاده</div>
@@ -279,10 +293,9 @@ onMounted(load);
               label="فقط این مدل‌ها"
               hint="خالی = همه"
             />
-            <div class="row q-col-gutter-md">
+            <div class="limits">
               <q-input
                 v-model="draft.spend_limit"
-                class="col-12 col-sm-6"
                 outlined
                 type="number"
                 min="0"
@@ -292,9 +305,18 @@ onMounted(load);
                 hint="خالی = نامحدود"
                 input-class="ltr"
               />
+              <q-select
+                v-model="draft.spend_limit_period"
+                outlined
+                emit-value
+                map-options
+                :options="periodOptions"
+                label="دوره"
+                :disable="draft.spend_limit === ''"
+              />
               <q-input
                 v-model="draft.expires_at"
-                class="col-12 col-sm-6"
+                class="expires"
                 outlined
                 type="date"
                 label="انقضا"
@@ -329,11 +351,24 @@ onMounted(load);
 .keys {
   overflow: hidden;
 }
+.limits {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 1.5fr;
+  gap: 12px;
+}
+@media (max-width: 599px) {
+  .limits {
+    grid-template-columns: 1fr 1fr;
+  }
+  .limits .expires {
+    grid-column: 1 / -1;
+  }
+}
 .key-row {
   display: grid;
   grid-template-columns:
     minmax(140px, 1.2fr) minmax(100px, 0.8fr) minmax(120px, 1.2fr)
-    120px 150px auto;
+    190px 150px auto;
   align-items: center;
   gap: 16px;
   padding: 14px 18px;

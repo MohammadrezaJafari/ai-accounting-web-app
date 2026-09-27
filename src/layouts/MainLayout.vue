@@ -1,9 +1,12 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import { guides } from '../guides';
+import type { Permission } from '../types';
 import BrandMark from '../components/BrandMark.vue';
+import NotificationBell from '../components/NotificationBell.vue';
+import OrganizationSwitcher from '../components/OrganizationSwitcher.vue';
 
 const auth = useAuthStore();
 const route = useRoute();
@@ -11,7 +14,14 @@ const router = useRouter();
 const drawer = ref(false);
 const usesOpen = ref(route.path.startsWith('/docs/'));
 
-const sections = [
+interface NavLink {
+  to: string;
+  label: string;
+  icon: string;
+  permission?: Permission;
+}
+
+const allSections: { title: string; links: NavLink[] }[] = [
   {
     title: 'شروع کار',
     links: [
@@ -24,13 +34,26 @@ const sections = [
     title: 'حساب کاربری',
     links: [
       { to: '/apps', label: 'اپ‌ها', icon: 'apps' },
-      { to: '/keys', label: 'کلیدهای API', icon: 'vpn_key' },
-      { to: '/wallet', label: 'کیف پول', icon: 'account_balance_wallet' },
+      { to: '/keys', label: 'کلیدهای API', icon: 'vpn_key', permission: 'manage-keys' },
+      {
+        to: '/wallet',
+        label: 'کیف پول',
+        icon: 'account_balance_wallet',
+        permission: 'manage-billing',
+      },
       { to: '/usage', label: 'نمودار مصارف', icon: 'bar_chart' },
       { to: '/logs', label: 'لاگ درخواست‌ها', icon: 'receipt_long' },
+      { to: '/team', label: 'تیم', icon: 'group' },
     ],
   },
 ];
+// Links the member's role cannot use are hidden (the router guards them too).
+const sections = computed(() =>
+  allSections.map((section) => ({
+    ...section,
+    links: section.links.filter((link) => !link.permission || auth.can(link.permission)),
+  })),
+);
 const useCases = guides.filter((guide) => guide.slug !== 'api');
 
 async function signOut(): Promise<void> {
@@ -57,6 +80,7 @@ async function signOut(): Promise<void> {
         <router-link to="/quickstart" class="top-link gt-xs">مستندات</router-link>
         <router-link to="/docs/api" class="top-link gt-xs">API Reference</router-link>
         <q-btn
+          v-if="auth.can('use-chat')"
           unelevated
           no-caps
           dense
@@ -65,6 +89,7 @@ async function signOut(): Promise<void> {
           label="چت"
           to="/chat"
         />
+        <NotificationBell />
         <q-btn flat round dense class="q-ml-sm" aria-label="حساب کاربری">
           <q-avatar size="34px" color="secondary" text-color="grey-4" icon="person" />
           <q-icon name="arrow_drop_down" color="grey-5" />
@@ -77,11 +102,15 @@ async function signOut(): Promise<void> {
                 </q-item-section>
               </q-item>
               <q-separator class="q-my-xs" />
-              <q-item v-close-popup clickable to="/wallet">
+              <q-item v-close-popup clickable to="/team">
+                <q-item-section avatar><q-icon name="group" /></q-item-section>
+                <q-item-section>تیم</q-item-section>
+              </q-item>
+              <q-item v-if="auth.can('manage-billing')" v-close-popup clickable to="/wallet">
                 <q-item-section avatar><q-icon name="account_balance_wallet" /></q-item-section>
                 <q-item-section>کیف پول</q-item-section>
               </q-item>
-              <q-item v-close-popup clickable to="/chat">
+              <q-item v-if="auth.can('use-chat')" v-close-popup clickable to="/chat">
                 <q-item-section avatar><q-icon name="chat_bubble_outline" /></q-item-section>
                 <q-item-section>چت</q-item-section>
               </q-item>
@@ -97,6 +126,7 @@ async function signOut(): Promise<void> {
 
     <q-drawer v-model="drawer" show-if-above :width="300" class="sidebar">
       <nav class="q-py-md">
+        <OrganizationSwitcher />
         <template v-for="section in sections" :key="section.title">
           <div class="caption">{{ section.title }}</div>
           <router-link
@@ -138,7 +168,7 @@ async function signOut(): Promise<void> {
           <span class="col">API Reference</span>
         </router-link>
         <div class="divider" />
-        <router-link to="/chat" class="nav go-chat">
+        <router-link v-if="auth.can('use-chat')" to="/chat" class="nav go-chat">
           <q-icon name="chat_bubble_outline" size="19px" class="nav-icon" />
           <span class="col">رفتن به چت</span>
           <q-icon name="arrow_back" size="16px" />
@@ -147,7 +177,8 @@ async function signOut(): Promise<void> {
     </q-drawer>
 
     <q-page-container class="content">
-      <router-view />
+      <!-- Pages reload their data when the organization changes. -->
+      <router-view :key="auth.organization?.id ?? 0" />
     </q-page-container>
   </q-layout>
 </template>

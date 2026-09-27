@@ -10,8 +10,78 @@ export interface User {
   created_at: string;
 }
 
-export interface App {
+export type Permission =
+  'manage-apps' | 'manage-keys' | 'manage-billing' | 'manage-members' | 'use-chat';
+
+export type OrganizationRole = 'owner' | 'developer' | 'billing';
+
+export interface Organization {
   id: number;
+  name: string;
+  role: OrganizationRole;
+  role_label: string;
+  permissions: Permission[];
+  members_count?: number;
+  apps_count?: number;
+  created_at: string;
+}
+
+export interface Session {
+  user: User;
+  organization: Organization;
+  organizations: Organization[];
+}
+
+export interface Member {
+  id: number;
+  name: string;
+  email: string;
+  role: OrganizationRole;
+  role_label: string;
+  joined_at: string;
+}
+
+export interface Invitation {
+  id: number;
+  email: string;
+  role: OrganizationRole;
+  role_label: string;
+  organization?: { id: number; name: string };
+  invited_by?: string | null;
+  url?: string;
+  expires_at: string;
+  is_expired: boolean;
+  created_at: string;
+}
+
+/** `total` = over the key's lifetime; days and (Jalali) months follow Tehran time. */
+export type BudgetPeriod = 'total' | 'daily' | 'monthly';
+
+/** A spend limit and what was spent in its current period. */
+export interface Budget {
+  spend_limit: Usd | null;
+  spend_limit_period: BudgetPeriod;
+  spent_this_period: Usd;
+  period_ends_at: string | null;
+}
+
+export interface AppNotification {
+  id: string;
+  data: {
+    type: 'spend_limit';
+    level: number;
+    subject: 'app' | 'key';
+    app_id: number;
+    title: string;
+    message: string;
+  };
+  read_at: string | null;
+  created_at: string;
+}
+
+export interface App extends Budget {
+  id: number;
+  organization_id: number;
   name: string;
   description: string | null;
   balance: Usd;
@@ -21,7 +91,7 @@ export interface App {
   created_at: string;
 }
 
-export interface ApiKey {
+export interface ApiKey extends Budget {
   id: number;
   app_id: number;
   app?: { id: number; name: string };
@@ -29,7 +99,6 @@ export interface ApiKey {
   key_prefix: string;
   allowed_providers: string[] | null;
   allowed_models: string[] | null;
-  spend_limit: Usd | null;
   spent: Usd;
   expires_at: string | null;
   last_used_at: string | null;
@@ -42,6 +111,7 @@ export interface ApiKeyDraft {
   allowed_providers: string[] | null;
   allowed_models: string[] | null;
   spend_limit: string | null;
+  spend_limit_period: BudgetPeriod;
   expires_at: string | null;
   is_active?: boolean;
 }
@@ -88,6 +158,7 @@ export interface Order {
   gateway_ref: string | null;
   meta: { package_name?: string; instructions?: string; payment_url?: string } | null;
   app?: { id: number; name: string };
+  user?: { id: number; name: string; email: string };
   package?: { id: number; name: string } | null;
   paid_at: string | null;
   created_at: string;

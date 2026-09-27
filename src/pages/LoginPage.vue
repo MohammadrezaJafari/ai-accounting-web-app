@@ -12,7 +12,7 @@ const router = useRouter();
 const auth = useAuthStore();
 
 const mode = ref<'login' | 'register'>('login');
-const form = reactive({ name: '', email: '', password: '' });
+const form = reactive({ name: '', organization: '', email: '', password: '' });
 const busy = ref(false);
 const error = ref('');
 
@@ -23,8 +23,8 @@ async function submit(): Promise<void> {
     const result =
       mode.value === 'login'
         ? await login(form.email, form.password)
-        : await register(form.name, form.email, form.password);
-    auth.signIn(result.token, result.user);
+        : await register(form.name, form.email, form.password, form.organization || null);
+    auth.signIn(result.token, result);
     const redirect = route.query.redirect;
     await router.replace(
       typeof redirect === 'string' && redirect.startsWith('/') && !redirect.startsWith('//')
@@ -59,6 +59,14 @@ async function submit(): Promise<void> {
           rounded
           label="نام"
           autofocus
+        />
+        <q-input
+          v-if="mode === 'register'"
+          v-model="form.organization"
+          outlined
+          rounded
+          label="نام شرکت یا سازمان (اختیاری)"
+          hint="بعداً می‌توانید اعضای تیم را به آن دعوت کنید."
         />
         <q-input
           v-model="form.email"
