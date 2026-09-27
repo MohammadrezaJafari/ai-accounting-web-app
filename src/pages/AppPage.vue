@@ -20,7 +20,7 @@ const transactions = ref<WalletTransaction[]>([]);
 const settings = reactive({ name: '', description: '' });
 const saving = ref(false);
 
-useMeta(() => ({ title: `${app.value?.name ?? 'اپ'} | حسابداری AI` }));
+useMeta(() => ({ title: `${app.value?.name ?? 'اپ'} | پلتفرم توسعه‌دهندگان` }));
 
 async function load(): Promise<void> {
   try {
@@ -80,13 +80,13 @@ onMounted(load);
     <template v-if="app">
       <div class="page-head">
         <div>
-          <q-breadcrumbs class="muted text-caption q-mb-xs">
+          <q-breadcrumbs class="faint text-caption q-mb-xs" active-color="grey">
             <q-breadcrumbs-el label="اپ‌ها" to="/apps" />
             <q-breadcrumbs-el :label="app.name" />
           </q-breadcrumbs>
           <h1>
             {{ app.name }}
-            <q-badge v-if="!app.is_active" color="grey" label="غیرفعال" class="q-ml-sm" />
+            <q-badge v-if="!app.is_active" color="grey-8" label="غیرفعال" class="q-ml-sm" />
           </h1>
           <p>{{ app.description || 'بدون توضیح' }}</p>
         </div>
@@ -99,7 +99,7 @@ onMounted(load);
             flat
             dense
             no-caps
-            color="primary"
+            class="btn-ghost-pill q-mt-sm"
             label="شارژ"
             icon="add"
             @click="tab = 'topup'"
@@ -112,9 +112,9 @@ onMounted(load);
           v-model="tab"
           align="left"
           no-caps
-          active-color="primary"
+          active-color="white"
           indicator-color="primary"
-          class="text-grey-8"
+          class="tabs"
           outside-arrows
           mobile-arrows
         >
@@ -125,18 +125,18 @@ onMounted(load);
           <q-tab name="settings" icon="settings" label="تنظیمات" />
         </q-tabs>
         <q-separator />
-        <q-tab-panels v-model="tab" animated class="rounded-borders">
+        <q-tab-panels v-model="tab" animated class="tab-panels">
           <q-tab-panel name="keys"><ApiKeysPanel :app-id="appId" /></q-tab-panel>
           <q-tab-panel name="topup">
             <TopUpPanel :app-id="appId" @ordered="load" />
             <p class="muted text-caption q-mt-md">
               سفارش‌های در انتظار پرداخت را در صفحهٔ
-              <router-link to="/billing" class="text-primary">شارژ و سفارش‌ها</router-link> ببینید.
+              <router-link to="/wallet" class="text-primary">کیف پول</router-link> ببینید.
             </p>
           </q-tab-panel>
           <q-tab-panel name="transactions">
             <div v-if="!transactions.length" class="empty">تراکنشی ثبت نشده است.</div>
-            <q-markup-table v-else flat bordered>
+            <q-markup-table v-else flat>
               <thead>
                 <tr>
                   <th class="text-right">زمان</th>
@@ -162,12 +162,14 @@ onMounted(load);
               </tbody>
             </q-markup-table>
             <p class="muted text-caption q-mt-sm">
-              کسر هزینهٔ درخواست‌ها در زبانهٔ «مصرف» نمایش داده می‌شود.
+              کسر هزینهٔ درخواست‌ها در زبانهٔ «مصرف» و صفحهٔ
+              <router-link to="/logs" class="text-primary">لاگ درخواست‌ها</router-link> نمایش داده
+              می‌شود.
             </p>
           </q-tab-panel>
-          <q-tab-panel name="usage"
-            ><UsageTable :filters="{ app_id: appId }" hide-app
-          /></q-tab-panel>
+          <q-tab-panel name="usage">
+            <UsageTable :filters="{ app_id: appId }" hide-app />
+          </q-tab-panel>
           <q-tab-panel name="settings">
             <q-form class="column q-gutter-md" style="max-width: 520px" @submit.prevent="save">
               <q-input v-model="settings.name" outlined label="نام اپ" />
@@ -180,12 +182,20 @@ onMounted(load);
               />
               <q-toggle
                 :model-value="app.is_active"
+                color="primary"
                 label="اپ فعال است (درخواست‌های اپ غیرفعال رد می‌شوند)"
                 @update:model-value="setActive"
               />
               <div class="row q-gutter-sm">
-                <q-btn type="submit" unelevated color="primary" label="ذخیره" :loading="saving" />
-                <q-btn flat color="negative" label="حذف اپ" @click="remove" />
+                <q-btn
+                  type="submit"
+                  unelevated
+                  no-caps
+                  class="btn-pill"
+                  label="ذخیره"
+                  :loading="saving"
+                />
+                <q-btn flat no-caps color="negative" label="حذف اپ" @click="remove" />
               </div>
             </q-form>
           </q-tab-panel>
@@ -198,6 +208,13 @@ onMounted(load);
 
 <style scoped>
 .balance {
-  min-width: 200px;
+  min-width: 220px;
+  background: var(--surface-2);
+}
+.tabs {
+  color: var(--muted);
+}
+.tab-panels {
+  background: transparent;
 }
 </style>

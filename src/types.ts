@@ -149,6 +149,8 @@ export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   error?: boolean;
+  /** HTTP status of a failed reply (402 = the app's wallet is empty). */
+  status?: number;
 }
 
 export interface Conversation {

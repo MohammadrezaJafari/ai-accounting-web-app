@@ -83,7 +83,7 @@ onMounted(() => void load(1));
 </script>
 
 <template>
-  <q-banner v-if="error" rounded class="bg-red-1 text-negative q-mb-md">{{ error }}</q-banner>
+  <div v-if="error" class="error-banner q-mb-md">{{ error }}</div>
   <q-table
     v-model:pagination="pagination"
     flat
@@ -106,7 +106,7 @@ onMounted(() => void load(1));
     <template #body-cell-model="scope">
       <q-td :props="scope">
         <span class="mono">{{ scope.row.model }}</span>
-        <q-badge v-if="scope.row.stream" outline color="grey-7" class="q-ml-xs">stream</q-badge>
+        <q-badge v-if="scope.row.stream" outline color="grey" class="q-ml-xs">stream</q-badge>
       </q-td>
     </template>
     <template #body-cell-input="scope">

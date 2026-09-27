@@ -327,10 +327,9 @@ onMounted(load);
 }
 .key-row {
   display: grid;
-  grid-template-columns: minmax(140px, 1.2fr) minmax(100px, 0.8fr) minmax(
-      120px,
-      1.2fr
-    ) 120px 150px auto;
+  grid-template-columns:
+    minmax(140px, 1.2fr) minmax(100px, 0.8fr) minmax(120px, 1.2fr)
+    120px 150px auto;
   align-items: center;
   gap: 16px;
   padding: 14px 18px;

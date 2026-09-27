@@ -57,9 +57,9 @@ onMounted(async () => {
         <div class="text-subtitle1 text-weight-bold">{{ pack.name }}</div>
         <div class="text-h4 text-weight-bolder ltr q-my-sm">{{ usd(pack.price) }}</div>
         <div class="muted">
-          اعتبار: <span class="ltr text-dark text-weight-bold">{{ usd(pack.credit) }}</span>
+          اعتبار: <span class="ltr ink-strong text-weight-bold">{{ usd(pack.credit) }}</span>
         </div>
-        <q-badge v-if="Number(pack.bonus) > 0" color="positive" class="q-mt-xs">
+        <q-badge v-if="Number(pack.bonus) > 0" color="positive" class="q-mt-xs self-start">
           <span class="ltr">+{{ usd(pack.bonus) }}</span
           >&nbsp;هدیه
         </q-badge>
@@ -67,8 +67,8 @@ onMounted(async () => {
         <q-space />
         <q-btn
           unelevated
-          color="primary"
-          class="full-width q-mt-md"
+          no-caps
+          class="btn-pill full-width q-mt-md"
           label="خرید"
           :loading="busy === `p${pack.id}`"
           @click="order({ package_id: pack.id }, `p${pack.id}`)"
@@ -95,8 +95,8 @@ onMounted(async () => {
         <q-space />
         <q-btn
           unelevated
-          color="primary"
-          class="full-width q-mt-md"
+          no-caps
+          class="btn-pill full-width q-mt-md"
           label="شارژ"
           :disable="!amount"
           :loading="busy === 'custom'"

@@ -102,10 +102,10 @@ const active = computed(() => (hovered.value === null ? null : series.value[hove
   pointer-events: none;
 }
 .grid span {
-  border-top: 1px solid var(--line-soft);
+  border-top: 1px dashed var(--line);
 }
 .grid span:last-child {
-  border-top-color: var(--line);
+  border-top: 1px solid var(--surface-3);
 }
 .bars {
   position: absolute;
@@ -142,8 +142,9 @@ const active = computed(() => (hovered.value === null ? null : series.value[hove
   display: flex;
   gap: 10px;
   align-items: center;
-  background: var(--navy);
-  color: #fff;
+  background: var(--surface-3);
+  border: 1px solid var(--line);
+  color: var(--ink-strong);
   font-size: 0.8rem;
   border-radius: 8px;
   padding: 4px 10px;
@@ -151,7 +152,7 @@ const active = computed(() => (hovered.value === null ? null : series.value[hove
   white-space: nowrap;
 }
 .tooltip .muted {
-  color: #cbd5e1;
+  color: var(--muted);
 }
 .labels {
   grid-column: 2;

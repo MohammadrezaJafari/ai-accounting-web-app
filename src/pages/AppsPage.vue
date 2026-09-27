@@ -6,7 +6,7 @@ import { createApp, errorMessage, listApps } from '../api';
 import { faNumber, usd } from '../format';
 import type { App } from '../types';
 
-useMeta({ title: 'اپ‌ها | حسابداری AI' });
+useMeta({ title: 'اپ‌ها | پلتفرم توسعه‌دهندگان' });
 
 const $q = useQuasar();
 const router = useRouter();
@@ -46,16 +46,23 @@ onMounted(load);
         <h1>اپ‌ها</h1>
         <p>هر اپ موجودی و کلیدهای API جداگانه دارد.</p>
       </div>
-      <q-btn unelevated color="primary" icon="add" label="اپ جدید" @click="creating = true" />
+      <q-btn
+        unelevated
+        no-caps
+        class="btn-pill"
+        icon="add"
+        label="اپ جدید"
+        @click="creating = true"
+      />
     </div>
 
     <div v-if="apps === null" class="flex flex-center q-pa-xl">
       <q-spinner size="lg" color="primary" />
     </div>
     <div v-else-if="!apps.length" class="panel empty">
-      <q-icon name="apps" size="48px" color="grey-5" />
+      <q-icon name="apps" size="48px" class="faint" />
       <p class="q-mt-md">هنوز اپی نساخته‌اید. برای شروع یک اپ بسازید و برایش کلید API بگیرید.</p>
-      <q-btn unelevated color="primary" label="ساخت اولین اپ" @click="creating = true" />
+      <q-btn unelevated no-caps class="btn-pill" label="ساخت اولین اپ" @click="creating = true" />
     </div>
     <div v-else class="apps">
       <router-link
@@ -66,28 +73,28 @@ onMounted(load);
       >
         <div class="row items-center no-wrap">
           <div class="col">
-            <div class="text-weight-bold text-subtitle1">{{ app.name }}</div>
-            <div class="muted ellipsis">{{ app.description || 'بدون توضیح' }}</div>
+            <div class="text-weight-bold text-subtitle1 ink-strong">{{ app.name }}</div>
+            <div class="faint ellipsis">{{ app.description || 'بدون توضیح' }}</div>
           </div>
-          <q-badge v-if="!app.is_active" color="grey" label="غیرفعال" />
+          <q-badge v-if="!app.is_active" color="grey-8" label="غیرفعال" />
         </div>
         <div class="row items-end q-mt-md">
           <div class="col">
             <div class="muted text-caption">موجودی</div>
             <div
-              class="text-h6 text-weight-bolder ltr"
+              class="text-h6 text-weight-bolder ink-strong"
               :class="{ 'text-negative': Number(app.balance) <= 0 }"
             >
-              {{ usd(app.balance) }}
+              <span class="ltr">{{ usd(app.balance) }}</span>
             </div>
           </div>
-          <div class="muted text-caption">{{ faNumber(app.api_keys_count ?? 0) }} کلید</div>
+          <div class="faint text-caption">{{ faNumber(app.api_keys_count ?? 0) }} کلید</div>
         </div>
       </router-link>
     </div>
 
     <q-dialog v-model="creating">
-      <q-card style="width: 440px; max-width: 92vw">
+      <q-card style="width: 440px; max-width: 92vw; border-radius: 18px">
         <q-form @submit.prevent="submit">
           <q-card-section><div class="text-h6">اپ جدید</div></q-card-section>
           <q-card-section class="column q-gutter-md">
@@ -106,9 +113,9 @@ onMounted(load);
               label="توضیح (اختیاری)"
             />
           </q-card-section>
-          <q-card-actions align="left">
-            <q-btn flat label="انصراف" v-close-popup />
-            <q-btn type="submit" unelevated color="primary" label="ساخت" :loading="busy" />
+          <q-card-actions align="left" class="q-pa-md">
+            <q-btn flat no-caps color="grey" label="انصراف" v-close-popup />
+            <q-btn type="submit" unelevated no-caps class="btn-pill" label="ساخت" :loading="busy" />
           </q-card-actions>
         </q-form>
       </q-card>
@@ -126,10 +133,10 @@ onMounted(load);
   display: block;
   transition:
     border-color 0.15s,
-    transform 0.15s;
+    background 0.15s;
 }
 .app:hover {
-  border-color: var(--brand);
-  transform: translateY(-1px);
+  border-color: var(--surface-3);
+  background: var(--surface-2);
 }
 </style>
