@@ -104,7 +104,11 @@ onMounted(load);
         </div>
         <div class="tile">
           <div class="tile-value ltr">{{ usd(overview.summary.earned) }}</div>
-          <div class="tile-label">کل درآمد شما</div>
+          <div class="tile-label">درآمد خالص شما</div>
+          <div class="tile-note">
+            سهم فروش <span class="ltr">{{ usd(overview.summary.share) }}</span> منهای هزینهٔ مدل
+            <span class="ltr">{{ usd(overview.summary.model_cost) }}</span>
+          </div>
         </div>
         <div class="tile">
           <div class="tile-value">{{ faNumber(overview.summary.units) }}</div>
@@ -119,7 +123,7 @@ onMounted(load);
       </div>
 
       <div class="panel panel-pad q-mb-lg">
-        <h2 class="panel-title">درآمد ۳۰ روز اخیر</h2>
+        <h2 class="panel-title">درآمد خالص ۳۰ روز اخیر</h2>
         <DailyBars :days="daily" :range="30" count-label="واحد" />
       </div>
 
@@ -159,7 +163,7 @@ onMounted(load);
             </span>
             <span class="stat gt-xs">
               <span class="ink-strong ltr">{{ usd(agent.stats?.earned ?? '0') }}</span>
-              <span class="faint text-caption block">درآمد</span>
+              <span class="faint text-caption block">درآمد خالص</span>
             </span>
             <span class="badges">
               <q-badge :color="statusColors[agent.status]" :label="agent.status_label" />
@@ -189,8 +193,8 @@ onMounted(load);
             </span>
           </div>
           <p class="faint text-caption q-mt-md q-mb-none">
-            سهم شما از هر فروش در همان لحظه در حسابتان ثبت می‌شود و پلتفرم مانده را به حسابی که وارد
-            کرده‌اید تسویه می‌کند.
+            سهم شما از هر فروش و هزینهٔ مدل‌هایی که ایجنت‌تان صدا می‌زند در همان اجرا در حسابتان ثبت
+            می‌شود و پلتفرم مانده را به حسابی که وارد کرده‌اید تسویه می‌کند.
           </p>
         </div>
 
@@ -266,6 +270,11 @@ onMounted(load);
 .tile-label {
   color: var(--muted);
   font-size: 0.82rem;
+}
+.tile-note {
+  color: var(--faint);
+  font-size: 0.72rem;
+  margin-top: 4px;
 }
 .agents {
   overflow: hidden;

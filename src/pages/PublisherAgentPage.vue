@@ -468,11 +468,12 @@ onBeforeUnmount(() => clearInterval(poll));
             </div>
             <p v-if="agent" class="faint text-caption q-mt-md q-mb-none">
               سهم شما {{ faNumber(agent.terms.revenue_share) }}٪ از فروش است. هزینهٔ مدل‌هایی که
-              ایجنت از طریق پلتفرم صدا می‌زند با پلتفرم است (تا سقف
+              ایجنت از طریق پلتفرم صدا می‌زند، در همهٔ اجراها (حتی اجراهای بی‌نتیجه و آزمایشی)، از
+              سهم شما کم می‌شود؛ هر اجرا حداکثر
               <span class="ltr">{{
                 agent.terms.max_cost_per_run ? usd(agent.terms.max_cost_per_run) : '—'
               }}</span>
-              در هر اجرا).
+              هزینهٔ مدل دارد.
             </p>
           </section>
         </div>
@@ -612,7 +613,7 @@ onBeforeUnmount(() => clearInterval(poll));
                       — ارزش {{ faNumber(testRun.units) }} {{ draft.unit_name }}
                     </span>
                     <span v-if="Number(testRun.cost) > 0" class="faint text-caption">
-                      — هزینهٔ مدل <span class="ltr">{{ usd(testRun.cost) }}</span>
+                      — هزینهٔ مدل <span class="ltr">{{ usd(testRun.cost) }}</span> (از سهم شما)
                     </span>
                   </div>
                   <div v-if="['queued', 'running'].includes(testRun.status)" class="muted">
@@ -672,7 +673,11 @@ onBeforeUnmount(() => clearInterval(poll));
             </div>
             <div class="tile">
               <div class="tile-value ltr">{{ usd(agent.stats.earned) }}</div>
-              <div class="tile-label">درآمد شما</div>
+              <div class="tile-label">درآمد خالص شما</div>
+              <div class="tile-note">
+                سهم فروش <span class="ltr">{{ usd(agent.stats.share) }}</span> منهای هزینهٔ مدل
+                <span class="ltr">{{ usd(agent.stats.cost) }}</span>
+              </div>
             </div>
             <div class="tile">
               <div class="tile-value">{{ faNumber(agent.stats.customers) }}</div>
@@ -710,8 +715,11 @@ onBeforeUnmount(() => clearInterval(poll));
                   }}</span>
                 </span>
                 <span class="faint text-caption">
-                  {{ run.units ? `${faNumber(run.units)} واحد — ` : ''
-                  }}{{ faDateTime(run.created_at) }}
+                  {{ run.units ? `${faNumber(run.units)} واحد — ` : '' }}
+                  <template v-if="Number(run.cost) > 0">
+                    هزینهٔ مدل <span class="ltr">{{ usd(run.cost) }}</span> —
+                  </template>
+                  {{ faDateTime(run.created_at) }}
                 </span>
               </div>
             </div>
@@ -894,6 +902,11 @@ h3 {
 .tile-label {
   color: var(--muted);
   font-size: 0.8rem;
+}
+.tile-note {
+  color: var(--faint);
+  font-size: 0.72rem;
+  margin-top: 4px;
 }
 .runs {
   display: grid;

@@ -415,8 +415,12 @@ export interface PublisherAgentDraft {
 export interface PublisherAgentStats {
   units: number;
   revenue: string;
-  earned: string;
+  /** The publisher's share of sales. */
+  share: string;
+  /** Model cost charged to the publisher (test runs included). */
   cost: string;
+  /** share − cost */
+  earned: string;
   customers: number;
   active_instances: number;
   runs: Partial<Record<AgentRunStatus, number>>;
@@ -481,6 +485,11 @@ export interface PublisherOverview {
   summary: {
     units: number;
     revenue: string;
+    /** The publisher's share of sales. */
+    share: string;
+    /** Model cost of the publisher's agents, charged to it. */
+    model_cost: string;
+    /** share − model_cost */
     earned: string;
     paid: string;
     balance: string;
