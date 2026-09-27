@@ -408,6 +408,8 @@ export interface PublisherAgentDraft {
   endpoint_url: string | null;
   timeout_seconds: number;
   run_deadline_minutes: number;
+  /** USD; the publisher's own cap on model cost per run, applied without review. */
+  max_cost_per_run: string;
   config_schema: ConfigField[];
   packages: PublisherPackage[];
 }
@@ -425,6 +427,9 @@ export interface PublisherAgentStats {
   active_instances: number;
   runs: Partial<Record<AgentRunStatus, number>>;
   failure_rate: number | null;
+  /** Model cost per run that used a model (USD). */
+  avg_run_cost: string | null;
+  max_run_cost: string | null;
 }
 
 /** A listing as its publisher sees it. */
@@ -443,6 +448,8 @@ export interface PublisherAgent extends Omit<PublisherAgentDraft, 'slug'> {
   terms: {
     revenue_share: number;
     max_cost_per_run: string | null;
+    /** The highest cap the publisher may set. */
+    max_cost_ceiling: string;
     default_model: string | null;
     allowed_models: string[];
   };

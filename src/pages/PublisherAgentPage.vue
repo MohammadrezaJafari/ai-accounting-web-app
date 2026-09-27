@@ -77,6 +77,7 @@ function emptyDraft(): PublisherAgentDraft {
     endpoint_url: null,
     timeout_seconds: 60,
     run_deadline_minutes: 15,
+    max_cost_per_run: '0.10',
     config_schema: [],
     packages: [
       { units: 30, price: '9.00' },
@@ -100,6 +101,7 @@ function toDraft(value: PublisherAgent): PublisherAgentDraft {
       endpoint_url: merged.endpoint_url,
       timeout_seconds: merged.timeout_seconds,
       run_deadline_minutes: merged.run_deadline_minutes,
+      max_cost_per_run: value.terms.max_cost_per_run ?? '0.10',
       config_schema: merged.config_schema,
       packages: merged.packages,
     }),
@@ -150,7 +152,10 @@ async function save(): Promise<void> {
     setAgent(await updatePublisherAgent(agent.value!.id, changes));
     $q.notify({
       type: 'positive',
-      message: editable.value ? 'ذخیره شد.' : 'تغییرات برای بررسی فرستاده شد.',
+      message:
+        editable.value || !agent.value?.pending_changes
+          ? 'ذخیره شد.'
+          : 'ذخیره شد؛ تغییرات فهرست پس از بررسی به مشتری‌ها می‌رسد.',
     });
   } catch (exception) {
     $q.notify({ type: 'negative', message: errorMessage(exception), timeout: 6000 });
@@ -467,14 +472,39 @@ onBeforeUnmount(() => clearInterval(poll));
               />
             </div>
             <p v-if="agent" class="faint text-caption q-mt-md q-mb-none">
-              سهم شما {{ faNumber(agent.terms.revenue_share) }}٪ از فروش است. هزینهٔ مدل‌هایی که
-              ایجنت از طریق پلتفرم صدا می‌زند، در همهٔ اجراها (حتی اجراهای بی‌نتیجه و آزمایشی)، از
-              سهم شما کم می‌شود؛ هر اجرا حداکثر
-              <span class="ltr">{{
-                agent.terms.max_cost_per_run ? usd(agent.terms.max_cost_per_run) : '—'
-              }}</span>
-              هزینهٔ مدل دارد.
+              سهم شما {{ faNumber(agent.terms.revenue_share) }}٪ از فروش است.
             </p>
+          </section>
+
+          <section>
+            <h3>هزینهٔ مدل</h3>
+            <p class="muted">
+              هزینهٔ مدل‌هایی که ایجنت از طریق پلتفرم صدا می‌زند، در همهٔ اجراها (حتی اجراهای
+              بی‌نتیجه و آزمایشی)، از سهم شما کم می‌شود. با این سقف، اجرایی که هزینه‌اش به آن برسد
+              درخواست بعدی به مدل را نمی‌تواند بفرستد.
+            </p>
+            <div class="grid-2">
+              <q-input
+                v-model="draft.max_cost_per_run"
+                outlined
+                type="number"
+                step="0.01"
+                prefix="$"
+                input-class="ltr"
+                label="سقف هزینهٔ مدل در هر اجرا"
+                :hint="`بین ۰٫۰۱ و ${usd(agent?.terms.max_cost_ceiling ?? '1')}؛ بدون نیاز به بررسی اعمال می‌شود`"
+              />
+              <div v-if="agent?.stats?.avg_run_cost" class="cost-facts">
+                <div>
+                  میانگین هزینهٔ هر اجرا تا حالا:
+                  <span class="ltr ink-strong">{{ usd(agent.stats.avg_run_cost) }}</span>
+                </div>
+                <div>
+                  گران‌ترین اجرا:
+                  <span class="ltr ink-strong">{{ usd(agent.stats.max_run_cost ?? '0') }}</span>
+                </div>
+              </div>
+            </div>
           </section>
         </div>
 
@@ -811,6 +841,13 @@ h3 {
   border-bottom: 1px solid var(--line);
   padding: 6px 8px;
   text-align: start;
+}
+.cost-facts {
+  display: grid;
+  gap: 6px;
+  align-content: center;
+  color: var(--muted);
+  font-size: 0.85rem;
 }
 .packages {
   display: grid;
