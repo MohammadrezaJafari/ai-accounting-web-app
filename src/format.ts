@@ -70,10 +70,43 @@ export const organizationRoles: Record<OrganizationRole, { label: string; descri
   billing: { label: 'مالی', description: 'کیف پول، شارژ، سفارش‌ها و سقف هزینهٔ اپ‌ها' },
 };
 
+export const agentRunStatuses: Record<string, { label: string; color: string; icon: string }> = {
+  queued: { label: 'در صف', color: 'grey', icon: 'schedule' },
+  running: { label: 'در حال اجرا', color: 'info', icon: 'autorenew' },
+  succeeded: { label: 'گزارش آماده', color: 'positive', icon: 'task_alt' },
+  empty: { label: 'خبر تازه نبود', color: 'grey', icon: 'inbox' },
+  no_credits: { label: 'اعتبار تمام شده', color: 'warning', icon: 'credit_card_off' },
+  failed: { label: 'ناموفق', color: 'negative', icon: 'error_outline' },
+};
+
+/** Days of the week as the API numbers them (0 = Sunday), in Iranian week order. */
+export const weekDays = [
+  { value: 6, label: 'ش' },
+  { value: 0, label: 'ی' },
+  { value: 1, label: 'د' },
+  { value: 2, label: 'س' },
+  { value: 3, label: 'چ' },
+  { value: 4, label: 'پ' },
+  { value: 5, label: 'ج' },
+];
+
+/** "ساعت ۸ و ۲۰، شنبه تا چهارشنبه" */
+export function scheduleSummary(hours: number[], days: number[]): string {
+  if (!hours.length) return 'فقط اجرای دستی';
+  const at = `ساعت ${[...hours]
+    .sort((a, b) => a - b)
+    .map((h) => faNumber(h))
+    .join(' و ')}`;
+  if (!days.length || days.length === 7) return `هر روز ${at}`;
+  const names = weekDays.filter((d) => days.includes(d.value)).map((d) => d.label);
+  return `${at} — ${names.join('، ')}`;
+}
+
 export const transactionTypes: Record<string, string> = {
   topup: 'شارژ',
   adjustment: 'اصلاح دستی',
   refund: 'بازپرداخت',
+  agent_purchase: 'خرید بستهٔ ایجنت',
 };
 
 /** Base URL apps use for the gateway (same origin as the web app unless configured). */

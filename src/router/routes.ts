@@ -39,6 +39,12 @@ const routes: RouteRecordRaw[] = [
         meta: { permission: 'manage-billing' },
       },
       { path: 'team', name: 'team', component: () => import('../pages/TeamPage.vue') },
+      { path: 'agents', name: 'agents', component: () => import('../pages/AgentsPage.vue') },
+      {
+        path: 'agents/:id(\\d+|new)',
+        name: 'agent',
+        component: () => import('../pages/AgentMonitorPage.vue'),
+      },
       {
         path: 'invite/:token',
         name: 'invite',

@@ -68,10 +68,12 @@ export interface Budget {
 export interface AppNotification {
   id: string;
   data: {
-    type: 'spend_limit';
-    level: number;
-    subject: 'app' | 'key';
-    app_id: number;
+    type: 'spend_limit' | 'agent_report' | 'agent_no_credits';
+    level?: number;
+    subject?: 'app' | 'key';
+    app_id?: number;
+    agent_instance_id?: number;
+    agent_run_id?: number;
     title: string;
     message: string;
   };
@@ -231,4 +233,117 @@ export interface Conversation {
   appId: number | null;
   messages: ChatMessage[];
   updatedAt: number;
+}
+
+export interface AgentPackage {
+  id: number;
+  name: string;
+  units: number;
+  price: Usd;
+  unit_price: Usd;
+}
+
+export interface Agent {
+  id: number;
+  slug: string;
+  name: string;
+  description: string | null;
+  unit_name: string;
+  /** Units the current organization has left. */
+  credits: number;
+  packages: AgentPackage[];
+}
+
+export interface AgentCatalog {
+  data: Agent[];
+  delivery: { telegram_bot: string | null; bale_bot: string | null };
+}
+
+export interface NewsMonitorConfig {
+  sources: string[];
+  keywords: string[];
+  exclude_keywords: string[];
+  instructions: string | null;
+  max_items: number;
+  max_age_hours: number;
+  detail: 'brief' | 'detailed';
+  language: 'fa' | 'en';
+  notify_empty: boolean;
+}
+
+export type DeliveryType = 'telegram' | 'bale' | 'email' | 'webhook';
+
+export interface AgentDestination {
+  id: number;
+  type: DeliveryType;
+  type_label: string;
+  label: string;
+  settings: {
+    chat_id?: string;
+    bot_token?: string | null;
+    emails?: string[];
+    url?: string;
+    secret?: string;
+  };
+  is_active: boolean;
+  last_delivered_at: string | null;
+  last_error: string | null;
+  created_at: string;
+}
+
+export type AgentRunStatus = 'queued' | 'running' | 'succeeded' | 'empty' | 'no_credits' | 'failed';
+
+export interface AgentRun {
+  id: number;
+  agent_instance_id: number;
+  status: AgentRunStatus;
+  trigger: 'schedule' | 'manual';
+  units: number;
+  items_found: number;
+  error: string | null;
+  meta: {
+    sources?: number;
+    fetched?: number;
+    new?: number;
+    matched?: number;
+    errors?: string[];
+    deliveries?: {
+      destination_id: number;
+      type: DeliveryType;
+      label: string;
+      ok: boolean;
+      error: string | null;
+    }[];
+  } | null;
+  report?: string | null;
+  started_at: string | null;
+  finished_at: string | null;
+  created_at: string;
+}
+
+export interface AgentInstance {
+  id: number;
+  name: string;
+  agent: { id: number; slug: string; name: string; unit_name: string };
+  app: { id: number; name: string };
+  config: NewsMonitorConfig;
+  run_hours: number[];
+  /** 0 = Sunday … 6 = Saturday; empty = every day. */
+  run_days: number[];
+  is_active: boolean;
+  last_run_at: string | null;
+  next_run_at: string | null;
+  latest_run: AgentRun | null;
+  destinations: AgentDestination[];
+  created_at: string;
+}
+
+export interface AgentInstanceDraft {
+  agent_id?: number;
+  app_id: number | null;
+  name: string;
+  config: NewsMonitorConfig;
+  run_hours: number[];
+  run_days: number[];
+  is_active?: boolean;
 }

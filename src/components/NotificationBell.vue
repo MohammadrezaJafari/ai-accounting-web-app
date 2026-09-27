@@ -5,7 +5,7 @@ import { listNotifications, markNotificationsRead } from '../api';
 import { faDateTime } from '../format';
 import type { AppNotification } from '../types';
 
-/** Spend limit alerts; polled every minute while the panel is open. */
+/** Spend limit alerts and agent reports; polled every minute while the panel is open. */
 const router = useRouter();
 const items = ref<AppNotification[]>([]);
 const unread = ref(0);
@@ -25,7 +25,25 @@ async function opened(): Promise<void> {
 }
 
 function open(item: AppNotification): void {
-  void router.push(`/apps/${item.data.app_id}`);
+  const { data } = item;
+  if (data.type === 'agent_report') {
+    void router.push({
+      path: `/agents/${data.agent_instance_id}`,
+      query: { run: data.agent_run_id },
+    });
+  } else if (data.type === 'agent_no_credits') {
+    void router.push('/agents');
+  } else {
+    void router.push(`/apps/${data.app_id}`);
+  }
+}
+
+function icon(item: AppNotification): { name: string; color: string } {
+  if (item.data.type === 'agent_report') return { name: 'feed', color: 'primary' };
+  if (item.data.type === 'agent_no_credits') return { name: 'credit_card_off', color: 'warning' };
+  return (item.data.level ?? 0) >= 100
+    ? { name: 'block', color: 'negative' }
+    : { name: 'warning_amber', color: 'warning' };
 }
 
 onMounted(() => {
@@ -53,10 +71,7 @@ onBeforeUnmount(() => clearInterval(timer));
           @click="open(item)"
         >
           <q-item-section avatar>
-            <q-icon
-              :name="item.data.level >= 100 ? 'block' : 'warning_amber'"
-              :color="item.data.level >= 100 ? 'negative' : 'warning'"
-            />
+            <q-icon :name="icon(item).name" :color="icon(item).color" />
           </q-item-section>
           <q-item-section>
             <q-item-label class="ink-strong">{{ item.data.title }}</q-item-label>

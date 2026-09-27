@@ -31,6 +31,10 @@ const allSections: { title: string; links: NavLink[] }[] = [
     ],
   },
   {
+    title: 'ایجنت‌ها',
+    links: [{ to: '/agents', label: 'پایش خبر و ایجنت‌ها', icon: 'smart_toy' }],
+  },
+  {
     title: 'حساب کاربری',
     links: [
       { to: '/apps', label: 'اپ‌ها', icon: 'apps' },

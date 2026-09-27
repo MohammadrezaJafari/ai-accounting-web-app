@@ -1,4 +1,9 @@
 import type {
+  AgentCatalog,
+  AgentDestination,
+  AgentInstance,
+  AgentInstanceDraft,
+  AgentRun,
   AiModel,
   ApiKey,
   ApiKeyDraft,
@@ -136,6 +141,43 @@ export const getInvitation = async (token: string) =>
   (await request<{ data: Invitation }>(`/invitations/${encodeURIComponent(token)}`)).data;
 export const acceptInvitation = async (token: string) =>
   (await post<{ data: Organization }>(`/invitations/${encodeURIComponent(token)}/accept`)).data;
+
+export const agentCatalog = () => request<AgentCatalog>('/agents');
+export const buyAgentPackage = (agentId: number, packageId: number, appId: number) =>
+  post<{ credits: number; app_balance: string }>(`/agents/${agentId}/purchase`, {
+    package_id: packageId,
+    app_id: appId,
+  });
+
+export const listAgentInstances = async () =>
+  (await request<{ data: AgentInstance[] }>('/agent-instances')).data;
+export const getAgentInstance = async (id: number) =>
+  (await request<{ data: AgentInstance }>(`/agent-instances/${id}`)).data;
+export const createAgentInstance = async (draft: AgentInstanceDraft) =>
+  (await post<{ data: AgentInstance }>('/agent-instances', draft)).data;
+export const updateAgentInstance = async (id: number, draft: Partial<AgentInstanceDraft>) =>
+  (await patch<{ data: AgentInstance }>(`/agent-instances/${id}`, draft)).data;
+export const deleteAgentInstance = (id: number) => destroy(`/agent-instances/${id}`);
+export const runAgentInstance = async (id: number) =>
+  (await post<{ data: AgentRun }>(`/agent-instances/${id}/run`)).data;
+export const listAgentRuns = (id: number, page = 1) =>
+  request<Paginated<AgentRun>>(`/agent-instances/${id}/runs?page=${page}`);
+export const getAgentRun = async (id: number) =>
+  (await request<{ data: AgentRun }>(`/agent-runs/${id}`)).data;
+
+export const createAgentDestination = async (
+  instanceId: number,
+  payload: { type: string; label?: string; settings: Record<string, unknown> },
+) =>
+  (await post<{ data: AgentDestination }>(`/agent-instances/${instanceId}/destinations`, payload))
+    .data;
+export const updateAgentDestination = async (
+  id: number,
+  payload: { label?: string; is_active?: boolean; settings?: Record<string, unknown> },
+) => (await patch<{ data: AgentDestination }>(`/agent-destinations/${id}`, payload)).data;
+export const deleteAgentDestination = (id: number) => destroy(`/agent-destinations/${id}`);
+export const testAgentDestination = (id: number) =>
+  post<{ ok: boolean; error: string | null }>(`/agent-destinations/${id}/test`);
 
 export const listNotifications = () =>
   request<{ data: AppNotification[]; unread_count: number }>('/notifications');
