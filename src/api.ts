@@ -1,5 +1,6 @@
 import type {
   AiModel,
+  ChatMessage,
   ApiKey,
   ApiKeyDraft,
   App,
@@ -90,6 +91,7 @@ export const updateApp = async (
 ) => (await patch<{ data: App }>(`/apps/${id}`, payload)).data;
 export const deleteApp = (id: number) => destroy(`/apps/${id}`);
 
+export const listAllKeys = async () => (await request<{ data: ApiKey[] }>('/keys')).data;
 export const listKeys = async (appId: number) =>
   (await request<{ data: ApiKey[] }>(`/apps/${appId}/keys`)).data;
 export const createKey = (appId: number, draft: ApiKeyDraft) =>
@@ -110,3 +112,59 @@ export const createOrder = async (
 ) => (await post<{ data: Order }>('/orders', payload)).data;
 export const cancelOrder = async (id: number) =>
   (await post<{ data: Order }>(`/orders/${id}/cancel`)).data;
+
+/**
+ * Stream a chat completion billed to an app. Calls `onDelta` for every text fragment
+ * and resolves when the stream ends (or rejects with ApiError on 4xx/5xx).
+ */
+export async function streamChat(
+  appId: number,
+  model: string,
+  messages: ChatMessage[],
+  onDelta: (text: string) => void,
+  signal?: AbortSignal,
+): Promise<void> {
+  const headers = new Headers({ Accept: 'text/event-stream', 'Content-Type': 'application/json' });
+  const token = storedToken();
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+
+  const response = await fetch(`/api/v1/apps/${appId}/chat/completions`, {
+    method: 'POST',
+    headers,
+    signal: signal ?? null,
+    body: JSON.stringify({
+      model,
+      stream: true,
+      messages: messages.map(({ role, content }) => ({ role, content })),
+    }),
+  });
+
+  if (!response.ok || !response.body) {
+    const body = await response.json().catch(() => ({}));
+    throw new ApiError(response.status, body.error?.message || body.message || 'پاسخی دریافت نشد.');
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    let newline: number;
+    while ((newline = buffer.indexOf('\n')) >= 0) {
+      const line = buffer.slice(0, newline).trim();
+      buffer = buffer.slice(newline + 1);
+      if (!line.startsWith('data:')) continue;
+      const payload = line.slice(5).trim();
+      if (!payload || payload === '[DONE]') continue;
+      try {
+        const event = JSON.parse(payload) as { choices?: { delta?: { content?: string } }[] };
+        const text = event.choices?.[0]?.delta?.content;
+        if (text) onDelta(text);
+      } catch {
+        // Ignore keep-alives and partial lines.
+      }
+    }
+  }
+}

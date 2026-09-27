@@ -24,6 +24,7 @@ export interface App {
 export interface ApiKey {
   id: number;
   app_id: number;
+  app?: { id: number; name: string };
   name: string;
   key_prefix: string;
   allowed_providers: string[] | null;
@@ -50,10 +51,12 @@ export type PriceCategory = 'input' | 'cached_input' | 'cache_write' | 'output';
 export interface AiModel {
   id: number;
   name: string;
+  description: string | null;
   public_id: string;
   provider: { id: number; slug: string; name: string; native_format: string | null } | null;
   context_window: number | null;
   is_active: boolean;
+  is_featured: boolean;
   price: Record<PriceCategory, Usd>;
 }
 
@@ -140,4 +143,19 @@ export interface Dashboard {
   daily: (UsageTotals & { day: string })[];
   by_model: (UsageTotals & { key: string; label: string })[];
   by_app: (UsageTotals & { key: number; label: string })[];
+}
+
+export interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  error?: boolean;
+}
+
+export interface Conversation {
+  id: string;
+  title: string;
+  model: string;
+  appId: number | null;
+  messages: ChatMessage[];
+  updatedAt: number;
 }

@@ -1,182 +1,180 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useMeta } from 'quasar';
-import { dashboard, errorMessage } from '../api';
-import { faNumber, tokens, usd } from '../format';
-import type { Dashboard } from '../types';
-import DailyBars from '../components/DailyBars.vue';
+import { listModels } from '../api';
+import { faNumber, gatewayUrl } from '../format';
+import { guides } from '../guides';
+import type { AiModel } from '../types';
+import CodeCard from '../components/CodeCard.vue';
+import CopyText from '../components/CopyText.vue';
+import ModelCard from '../components/ModelCard.vue';
 
-useMeta({ title: 'داشبورد | حسابداری AI' });
+useMeta({ title: 'داشبورد | پلتفرم توسعه‌دهندگان' });
 
-const range = ref(30);
-const data = ref<Dashboard | null>(null);
-const error = ref('');
+const models = ref<AiModel[]>([]);
+const featured = computed(() => {
+  const picked = models.value.filter((m) => m.is_featured);
+  return (picked.length ? picked : models.value).slice(0, 6);
+});
+const base = `${gatewayUrl()}/v1`;
 
-async function load(): Promise<void> {
-  error.value = '';
-  try {
-    data.value = await dashboard(range.value);
-  } catch (exception) {
-    error.value = errorMessage(exception);
-  }
-}
+const quickAccess = [
+  {
+    to: '/keys',
+    icon: 'vpn_key',
+    title: 'دریافت API Key',
+    subtitle: 'کلید API خود را برای شروع استفاده دریافت کنید',
+  },
+  ...guides
+    .filter((guide) => guide.slug !== 'api')
+    .map((guide) => ({
+      to: `/docs/${guide.slug}`,
+      icon: guide.icon,
+      title: guide.title,
+      subtitle: guide.subtitle,
+    })),
+];
 
-const topModels = computed(() => data.value?.by_model.slice(0, 8) ?? []);
-const maxModelCharge = computed(() => Math.max(...topModels.value.map((m) => Number(m.charge)), 0));
-
-onMounted(load);
-watch(range, load);
+onMounted(async () => {
+  models.value = await listModels().catch(() => []);
+});
 </script>
 
 <template>
   <q-page class="page">
-    <div class="page-head">
-      <div>
-        <h1>داشبورد</h1>
-        <p>خلاصهٔ موجودی و مصرف همهٔ اپ‌های شما</p>
+    <div class="note-banner q-mb-xl row items-center no-wrap q-gutter-md">
+      <q-icon name="info_outline" color="warning" size="22px" />
+      <div class="col">
+        آدرس پایهٔ API برای همهٔ SDKهای سازگار با OpenAI:
+        <span class="inline-code">{{ base }}</span>
+        <div class="faint text-caption q-mt-xs">
+          برای Claude Code و SDK رسمی Anthropic آدرس بدون /v1 را بدهید.
+        </div>
       </div>
-      <q-btn-toggle
-        v-model="range"
-        unelevated
-        rounded
-        toggle-color="primary"
-        color="white"
-        text-color="dark"
-        :options="[
-          { label: '۷ روز', value: 7 },
-          { label: '۳۰ روز', value: 30 },
-          { label: '۹۰ روز', value: 90 },
-        ]"
-      />
+      <CopyText :text="base" label="کپی آدرس" />
     </div>
 
-    <q-banner v-if="error" rounded class="bg-red-1 text-negative q-mb-md">{{ error }}</q-banner>
-
-    <template v-if="data">
-      <div class="grid-stats q-mb-lg">
-        <div class="panel stat">
-          <div class="label">موجودی کل</div>
-          <div class="value ltr">{{ usd(data.balance) }}</div>
-          <div class="hint">در {{ faNumber(data.apps_count) }} اپ</div>
-        </div>
-        <div class="panel stat">
-          <div class="label">هزینهٔ {{ faNumber(range) }} روز</div>
-          <div class="value ltr">{{ usd(data.totals.charge) }}</div>
-          <div class="hint">{{ faNumber(data.totals.requests) }} درخواست</div>
-        </div>
-        <div class="panel stat">
-          <div class="label">توکن ورودی / خروجی</div>
-          <div class="value ltr">
-            {{ tokens(data.totals.input_tokens) }} / {{ tokens(data.totals.output_tokens) }}
-          </div>
-          <div class="hint">شامل توکن‌های کش‌شده</div>
-        </div>
-        <div class="panel stat">
-          <div class="label">درخواست‌های ناموفق</div>
-          <div class="value">{{ faNumber(data.totals.errors) }}</div>
-          <div class="hint">هزینه‌ای برایشان کسر نشده</div>
-        </div>
+    <div class="hero">
+      <div class="hero-text">
+        <h1>شروع سریع</h1>
+        <p>
+          بدون نیاز به تغییر کد، با یک کلید به مدل‌های OpenAI، Claude، Gemini و … دسترسی داشته
+          باشید.
+        </p>
+        <q-btn unelevated no-caps class="btn-pill q-mt-lg" label="شروع کنید" to="/keys" />
       </div>
+      <div class="hero-code"><CodeCard /></div>
+    </div>
 
-      <div
-        v-if="Number(data.balance) <= 0"
-        class="panel panel-pad q-mb-lg row items-center q-gutter-md"
-      >
-        <q-icon name="info" color="warning" size="md" />
-        <div class="col">موجودی اپ‌هایتان تمام شده و درخواست‌ها با خطای 402 رد می‌شوند.</div>
-        <q-btn unelevated color="primary" label="شارژ حساب" to="/billing" />
-      </div>
+    <h2 class="section-title">مدل‌ها</h2>
+    <div class="models">
+      <ModelCard v-for="model in featured" :key="model.id" :model="model" />
+    </div>
+    <div v-if="models.length > featured.length" class="more">
+      <q-btn flat no-caps class="btn-ghost-pill" to="/models">
+        +{{ faNumber(models.length - featured.length) }} مدل دیگر
+        <q-icon name="arrow_back" size="18px" class="q-ml-sm" />
+      </q-btn>
+    </div>
 
-      <div class="panel panel-pad q-mb-lg">
-        <div class="panel-title">هزینهٔ روزانه</div>
-        <DailyBars :days="data.daily" :range="range" />
-      </div>
-
-      <div class="row q-col-gutter-lg">
-        <div class="col-12 col-md-7">
-          <div class="panel panel-pad full-height">
-            <div class="panel-title">هزینه به تفکیک مدل</div>
-            <div v-if="!topModels.length" class="empty">هنوز مصرفی ثبت نشده است.</div>
-            <div v-for="model in topModels" :key="model.key" class="model-row">
-              <span class="mono name">{{ model.label }}</span>
-              <div class="track">
-                <div
-                  class="fill"
-                  :style="{
-                    width: `${maxModelCharge ? (Number(model.charge) / maxModelCharge) * 100 : 0}%`,
-                  }"
-                />
-              </div>
-              <span class="ltr amount">{{ usd(model.charge) }}</span>
-              <span class="muted count">{{ faNumber(model.requests) }}</span>
-            </div>
-          </div>
-        </div>
-        <div class="col-12 col-md-5">
-          <div class="panel panel-pad full-height">
-            <div class="panel-title">هزینه به تفکیک اپ</div>
-            <div v-if="!data.by_app.length" class="empty">هنوز مصرفی ثبت نشده است.</div>
-            <q-list separator>
-              <q-item
-                v-for="app in data.by_app"
-                :key="app.key"
-                :to="`/apps/${app.key}`"
-                class="q-px-none"
-              >
-                <q-item-section>{{ app.label }}</q-item-section>
-                <q-item-section side class="ltr text-dark">{{ usd(app.charge) }}</q-item-section>
-              </q-item>
-            </q-list>
-          </div>
-        </div>
-      </div>
-    </template>
-    <div v-else-if="!error" class="flex flex-center q-pa-xl">
-      <q-spinner size="lg" color="primary" />
+    <h2 class="section-title">دسترسی سریع</h2>
+    <div class="quick">
+      <router-link v-for="item in quickAccess" :key="item.to" :to="item.to" class="quick-item">
+        <span class="quick-icon"><q-icon :name="item.icon" size="24px" /></span>
+        <span>
+          <span class="quick-title">{{ item.title }}</span>
+          <span class="quick-sub">{{ item.subtitle }}</span>
+        </span>
+      </router-link>
     </div>
   </q-page>
 </template>
 
 <style scoped>
-.model-row {
+.hero {
   display: grid;
-  grid-template-columns: 150px 1fr 90px 50px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.55fr);
+  gap: 32px;
   align-items: center;
-  gap: 10px;
-  padding: 6px 0;
-  font-size: 0.85rem;
 }
-.name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  text-align: start;
+.hero-text h1 {
+  font-size: 2.1rem;
 }
-.track {
-  height: 10px;
-  background: var(--line-soft);
-  border-radius: 4px;
-  overflow: hidden;
+.hero-text p {
+  color: var(--muted);
+  font-size: 1.1rem;
+  line-height: 1.9;
+  margin-top: 16px;
 }
-.fill {
-  height: 100%;
-  background: var(--brand);
-  border-radius: 4px;
+.models {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
 }
-.amount {
-  text-align: end;
-  font-weight: 600;
+.more {
+  display: flex;
+  justify-content: center;
+  margin-top: 28px;
+  position: relative;
 }
-.count {
-  text-align: end;
-  font-size: 0.75rem;
+.more::before {
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  top: 50%;
+  border-top: 1px solid var(--line-soft);
+  z-index: 0;
+}
+.more .q-btn {
+  background: var(--page);
+  z-index: 1;
+}
+.quick {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 28px 48px;
+}
+.quick-item {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.quick-icon {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  background: var(--surface-2);
+  color: var(--ink);
+  flex: none;
+}
+.quick-item:hover .quick-icon {
+  background: var(--surface-3);
+}
+.quick-title {
+  display: block;
+  color: var(--ink-strong);
+  font-size: 1.05rem;
+}
+.quick-sub {
+  display: block;
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin-top: 2px;
+}
+@media (max-width: 1023px) {
+  .hero {
+    grid-template-columns: 1fr;
+  }
+  .models {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 @media (max-width: 599px) {
-  .model-row {
-    grid-template-columns: 110px 1fr 76px;
-  }
-  .count {
-    display: none;
+  .models,
+  .quick {
+    grid-template-columns: 1fr;
   }
 }
 </style>

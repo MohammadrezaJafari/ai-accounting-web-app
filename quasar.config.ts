@@ -26,7 +26,7 @@ export default defineConfig(() => ({
   },
   framework: {
     lang: 'fa-IR',
-    plugins: ['Notify', 'Dialog', 'Meta'],
+    plugins: ['Notify', 'Dialog', 'Meta', 'Dark'],
     config: {
       brand: {
         primary: '#4f46e5',

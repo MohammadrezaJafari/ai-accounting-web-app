@@ -1,17 +1,18 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useMeta, useQuasar } from 'quasar';
 import { cancelOrder, errorMessage, listApps, listOrders } from '../api';
 import { faDateTime, orderStatuses, usd } from '../format';
 import type { App, Order } from '../types';
 import TopUpPanel from '../components/TopUpPanel.vue';
 
-useMeta({ title: 'شارژ و سفارش‌ها | حسابداری AI' });
+useMeta({ title: 'کیف پول | پلتفرم توسعه‌دهندگان' });
 
 const $q = useQuasar();
 const apps = ref<App[]>([]);
 const appId = ref<number | null>(null);
 const orders = ref<Order[] | null>(null);
+const total = computed(() => apps.value.reduce((sum, app) => sum + Number(app.balance), 0));
 
 async function loadOrders(): Promise<void> {
   orders.value = (await listOrders().catch(() => null))?.data ?? [];
@@ -39,43 +40,53 @@ onMounted(load);
   <q-page class="page">
     <div class="page-head">
       <div>
-        <h1>شارژ و سفارش‌ها</h1>
-        <p>
-          یک بسته بخرید یا هر مبلغی که می‌خواهید شارژ کنید. اعتبار به موجودی اپ انتخاب‌شده اضافه
-          می‌شود.
-        </p>
+        <h1>کیف پول</h1>
+        <p>هر اپ موجودی جدا دارد؛ شارژ به کیف پول اپ انتخاب‌شده اضافه می‌شود.</p>
       </div>
     </div>
 
-    <div class="panel panel-pad q-mb-lg">
-      <div v-if="!apps.length" class="empty">
-        برای شارژ اول یک اپ بسازید.
-        <div class="q-mt-md"><q-btn unelevated color="primary" to="/apps" label="ساخت اپ" /></div>
+    <div class="balances q-mb-xl">
+      <div class="panel stat total">
+        <div class="label">موجودی کل</div>
+        <div class="value ltr">{{ usd(total) }}</div>
+        <div class="hint">در {{ apps.length.toLocaleString('fa-IR') }} اپ</div>
       </div>
-      <template v-else>
-        <q-select
-          v-model="appId"
-          outlined
-          emit-value
-          map-options
-          class="q-mb-lg"
-          style="max-width: 360px"
-          label="شارژ برای اپ"
-          :options="
-            apps.map((a) => ({ value: a.id, label: `${a.name} — موجودی ${usd(a.balance)}` }))
-          "
-        />
-        <TopUpPanel :app-id="appId" @ordered="load" />
-      </template>
+      <button
+        v-for="app in apps"
+        :key="app.id"
+        type="button"
+        class="panel stat app-balance"
+        :class="{ selected: app.id === appId }"
+        @click="appId = app.id"
+      >
+        <div class="label">{{ app.name }}</div>
+        <div class="value ltr" :class="{ 'text-negative': Number(app.balance) <= 0 }">
+          {{ usd(app.balance) }}
+        </div>
+        <div class="hint">
+          {{ app.id === appId ? 'انتخاب‌شده برای شارژ' : 'برای شارژ انتخاب کنید' }}
+        </div>
+      </button>
     </div>
 
-    <div class="panel panel-pad">
-      <div class="panel-title">سفارش‌ها</div>
+    <div v-if="!apps.length" class="panel empty">
+      برای شارژ اول یک اپ بسازید.
+      <div class="q-mt-md">
+        <q-btn unelevated no-caps class="btn-pill" to="/apps" label="ساخت اپ" />
+      </div>
+    </div>
+    <template v-else>
+      <h2 class="panel-title">شارژ {{ apps.find((a) => a.id === appId)?.name }}</h2>
+      <TopUpPanel :app-id="appId" @ordered="load" />
+    </template>
+
+    <h2 class="section-title">تاریخچهٔ پرداخت‌ها</h2>
+    <div class="panel">
       <div v-if="orders === null" class="flex flex-center q-pa-lg">
         <q-spinner color="primary" />
       </div>
-      <div v-else-if="!orders.length" class="empty">سفارشی ثبت نشده است.</div>
-      <q-markup-table v-else flat bordered>
+      <div v-else-if="!orders.length" class="empty">پرداختی ثبت نشده است.</div>
+      <q-markup-table v-else flat>
         <thead>
           <tr>
             <th class="text-right">#</th>
@@ -113,6 +124,7 @@ onMounted(load);
                 v-if="order.status === 'pending'"
                 flat
                 dense
+                no-caps
                 color="negative"
                 label="لغو"
                 @click="cancel(order)"
@@ -124,3 +136,24 @@ onMounted(load);
     </div>
   </q-page>
 </template>
+
+<style scoped>
+.balances {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 16px;
+}
+.total {
+  background: var(--surface-2);
+}
+.app-balance {
+  font: inherit;
+  color: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+.app-balance.selected {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 1px var(--brand);
+}
+</style>
