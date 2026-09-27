@@ -15,19 +15,19 @@ const sections = [
   {
     title: 'شروع کار',
     links: [
-      { to: '/', label: 'داشبورد' },
-      { to: '/quickstart', label: 'شروع سریع' },
-      { to: '/models', label: 'مدل‌ها و قیمت' },
+      { to: '/', label: 'داشبورد', icon: 'space_dashboard' },
+      { to: '/quickstart', label: 'شروع سریع', icon: 'rocket_launch' },
+      { to: '/models', label: 'مدل‌ها و قیمت', icon: 'auto_awesome' },
     ],
   },
   {
     title: 'حساب کاربری',
     links: [
-      { to: '/apps', label: 'اپ‌ها' },
-      { to: '/keys', label: 'کلیدهای API' },
-      { to: '/wallet', label: 'کیف پول' },
-      { to: '/usage', label: 'نمودار مصارف' },
-      { to: '/logs', label: 'لاگ درخواست‌ها' },
+      { to: '/apps', label: 'اپ‌ها', icon: 'apps' },
+      { to: '/keys', label: 'کلیدهای API', icon: 'vpn_key' },
+      { to: '/wallet', label: 'کیف پول', icon: 'account_balance_wallet' },
+      { to: '/usage', label: 'نمودار مصارف', icon: 'bar_chart' },
+      { to: '/logs', label: 'لاگ درخواست‌ها', icon: 'receipt_long' },
     ],
   },
 ];
@@ -56,6 +56,15 @@ async function signOut(): Promise<void> {
         <q-space />
         <router-link to="/quickstart" class="top-link gt-xs">مستندات</router-link>
         <router-link to="/docs/api" class="top-link gt-xs">API Reference</router-link>
+        <q-btn
+          unelevated
+          no-caps
+          dense
+          class="btn-pill chat-pill gt-xs"
+          icon="chat_bubble_outline"
+          label="چت"
+          to="/chat"
+        />
         <q-btn flat round dense class="q-ml-sm" aria-label="حساب کاربری">
           <q-avatar size="34px" color="secondary" text-color="grey-4" icon="person" />
           <q-icon name="arrow_drop_down" color="grey-5" />
@@ -99,14 +108,16 @@ async function signOut(): Promise<void> {
               active: link.to === '/' ? route.path === '/' : route.path.startsWith(link.to),
             }"
           >
-            {{ link.label }}
+            <q-icon :name="link.icon" size="19px" class="nav-icon" />
+            <span class="col">{{ link.label }}</span>
           </router-link>
           <div class="divider" />
         </template>
 
         <div class="caption">مستندات</div>
         <button type="button" class="nav nav-toggle" @click="usesOpen = !usesOpen">
-          <span>موارد استفاده</span>
+          <q-icon name="menu_book" size="19px" class="nav-icon" />
+          <span class="col">موارد استفاده</span>
           <q-icon :name="usesOpen ? 'expand_less' : 'expand_more'" size="18px" />
         </button>
         <q-slide-transition>
@@ -123,12 +134,14 @@ async function signOut(): Promise<void> {
           </div>
         </q-slide-transition>
         <router-link to="/docs/api" class="nav" :class="{ active: route.path === '/docs/api' }">
-          API Reference
+          <q-icon name="data_object" size="19px" class="nav-icon" />
+          <span class="col">API Reference</span>
         </router-link>
         <div class="divider" />
         <router-link to="/chat" class="nav go-chat">
-          <q-icon name="arrow_forward" size="18px" />
-          <span>رفتن به چت</span>
+          <q-icon name="chat_bubble_outline" size="19px" class="nav-icon" />
+          <span class="col">رفتن به چت</span>
+          <q-icon name="arrow_back" size="16px" />
         </router-link>
       </nav>
     </q-drawer>
@@ -161,17 +174,30 @@ async function signOut(): Promise<void> {
   background: var(--sidebar);
 }
 .caption {
-  color: var(--ink);
-  font-size: 0.8rem;
+  color: var(--faint);
+  font-size: 0.78rem;
   padding: 8px 24px 6px;
+}
+.chat-pill.q-btn {
+  margin-inline-start: 24px;
+  min-height: 36px;
+  padding: 0 16px;
+  font-size: 0.88rem;
+}
+.nav-icon {
+  color: var(--muted);
+}
+.nav.active .nav-icon {
+  color: var(--brand);
 }
 .nav {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  width: 100%;
-  padding: 9px 24px;
+  gap: 12px;
+  width: calc(100% - 20px);
+  margin: 1px 10px;
+  border-radius: 10px;
+  padding: 9px 14px;
   color: var(--ink);
   font-size: 0.92rem;
   background: none;
@@ -188,14 +214,13 @@ async function signOut(): Promise<void> {
   color: var(--ink-strong);
 }
 .nav.sub {
-  padding-inline-start: 44px;
+  padding-inline-start: 45px;
   color: var(--muted);
 }
 .nav.sub.active {
   color: var(--ink-strong);
 }
 .go-chat {
-  justify-content: flex-start;
   color: var(--muted);
 }
 .divider {

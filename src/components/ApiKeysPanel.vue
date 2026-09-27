@@ -191,9 +191,13 @@ onMounted(load);
         </div>
         <div class="key-spend">
           <div class="faint text-caption">هزینه‌شده</div>
-          <div class="ltr">
-            {{ usd(key.spent)
-            }}<span v-if="key.spend_limit" class="faint"> / {{ usd(key.spend_limit) }}</span>
+          <div>
+            <span class="ltr"
+              >{{ usd(key.spent)
+              }}<span v-if="key.spend_limit" class="faint">
+                / {{ usd(key.spend_limit) }}</span
+              ></span
+            >
           </div>
         </div>
         <div class="key-used gt-sm">
