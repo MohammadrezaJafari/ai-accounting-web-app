@@ -116,6 +116,19 @@ export const login = async (email: string, password: string) => {
   const body = await post<SessionPayload & { token: string }>('/auth/login', { email, password });
   return { token: body.token, ...toSession(body) };
 };
+/** Trade the one-time `#oidc_code` from the organization sign-in for the same session as `login`. */
+export const oidcExchange = async (code: string) => {
+  const body = await post<SessionPayload & { token: string }>('/auth/oidc/exchange', { code });
+  return { token: body.token, ...toSession(body) };
+};
+export type AuthMethods = {
+  password: boolean;
+  oidc: boolean;
+  oidc_url: string | null;
+  oidc_logout_url: string | null;
+  tenant_required: boolean;
+};
+export const authMethods = () => request<AuthMethods>('/auth/methods');
 export const logout = () => post<{ ok: boolean }>('/auth/logout');
 export const me = async () => {
   const body = await request<Omit<SessionPayload, 'user'> & { data: User }>('/auth/me');

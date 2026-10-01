@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import { useMeta } from 'quasar';
 import { useRoute, useRouter } from 'vue-router';
-import { errorMessage, login, register } from '../api';
+import type { AuthMethods } from '../api';
+import { authMethods, errorMessage, login, oidcExchange, register } from '../api';
 import { useAuthStore } from '../stores/auth';
 
 useMeta({ title: 'ورود | پلتفرم توسعه‌دهندگان' });
@@ -15,21 +16,41 @@ const mode = ref<'login' | 'register'>('login');
 const form = reactive({ name: '', organization: '', email: '', password: '' });
 const busy = ref(false);
 const error = ref('');
+// Until the backend answers, assume the old behaviour (password only).
+const methods = ref<AuthMethods | null>(null);
+const passwordOn = computed(() => methods.value?.password ?? true);
+const tenant = ref('');
+
+/** Only a path on this panel (no scheme, host or protocol-relative URL). */
+function intended(): string | null {
+  const redirect = route.query.redirect;
+  return typeof redirect === 'string' && redirect.startsWith('/') && !redirect.startsWith('//')
+    ? redirect
+    : null;
+}
+
+const oidcHref = computed(() => {
+  if (!methods.value?.oidc || !methods.value.oidc_url) return null;
+  const url = new URL(methods.value.oidc_url, window.location.origin);
+  const path = intended();
+  if (path) url.searchParams.set('intended', path);
+  if (methods.value.tenant_required) url.searchParams.set('tenant', tenant.value.trim());
+  return url.toString();
+});
+
+async function finish(result: Awaited<ReturnType<typeof login>>): Promise<void> {
+  auth.signIn(result.token, result);
+  await router.replace(intended() ?? '/');
+}
 
 async function submit(): Promise<void> {
   busy.value = true;
   error.value = '';
   try {
-    const result =
+    await finish(
       mode.value === 'login'
         ? await login(form.email, form.password)
-        : await register(form.name, form.email, form.password, form.organization || null);
-    auth.signIn(result.token, result);
-    const redirect = route.query.redirect;
-    await router.replace(
-      typeof redirect === 'string' && redirect.startsWith('/') && !redirect.startsWith('//')
-        ? redirect
-        : '/',
+        : await register(form.name, form.email, form.password, form.organization || null),
     );
   } catch (exception) {
     error.value = errorMessage(exception);
@@ -37,6 +58,24 @@ async function submit(): Promise<void> {
     busy.value = false;
   }
 }
+
+onMounted(async () => {
+  const code = new URLSearchParams(window.location.hash.slice(1)).get('oidc_code');
+  if (code) {
+    // The code is single-use: drop it from the address bar (and history) before trading it.
+    window.history.replaceState(window.history.state, '', route.fullPath.split('#')[0]);
+    busy.value = true;
+    try {
+      await finish(await oidcExchange(code));
+      return;
+    } catch (exception) {
+      error.value = errorMessage(exception);
+    } finally {
+      busy.value = false;
+    }
+  }
+  methods.value = await authMethods().catch(() => null);
+});
 </script>
 
 <template>
@@ -51,7 +90,28 @@ async function submit(): Promise<void> {
             : 'با یک حساب به مدل‌های GPT، Claude، Gemini و … دسترسی بگیرید.'
         }}
       </p>
-      <q-form class="column form" @submit.prevent="submit">
+      <div v-if="oidcHref && mode === 'login'" class="column form">
+        <q-input
+          v-if="methods?.tenant_required"
+          v-model="tenant"
+          outlined
+          rounded
+          label="شناسهٔ سازمان"
+          input-class="ltr"
+        />
+        <q-btn
+          unelevated
+          no-caps
+          class="btn-pill full-width"
+          :href="oidcHref"
+          :disable="busy || (methods?.tenant_required && !tenant.trim())"
+          label="ورود با حساب سازمانی"
+        />
+        <div v-if="!passwordOn && error" class="error-banner">{{ error }}</div>
+        <div v-if="passwordOn" class="divider">یا</div>
+      </div>
+      <div v-else-if="!passwordOn && error" class="error-banner">{{ error }}</div>
+      <q-form v-if="passwordOn" class="column form" @submit.prevent="submit">
         <q-input
           v-if="mode === 'register'"
           v-model="form.name"
@@ -96,7 +156,7 @@ async function submit(): Promise<void> {
           :label="mode === 'login' ? 'ورود' : 'ثبت‌نام'"
         />
       </q-form>
-      <div class="switch">
+      <div v-if="passwordOn" class="switch">
         {{ mode === 'login' ? 'حساب ندارید؟' : 'حساب دارید؟' }}
         <button type="button" @click="mode = mode === 'login' ? 'register' : 'login'">
           {{ mode === 'login' ? 'ثبت‌نام کنید' : 'وارد شوید' }}
@@ -146,6 +206,12 @@ h1 {
 .form {
   gap: 16px;
   text-align: start;
+}
+.divider {
+  color: var(--muted);
+  font-size: 0.85rem;
+  text-align: center;
+  margin-bottom: 16px;
 }
 .switch {
   margin-top: 20px;
