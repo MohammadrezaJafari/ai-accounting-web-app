@@ -1,0 +1,125 @@
+---
+# پنل مشتری (Quasar SPA پشت nginx). مرورگر /api/v1 و /v1 را روی همین دامنه صدا می‌زند و HTTPRoute
+# آن‌ها را به سرویس ai-accounting (بک‌اند لاراول) می‌فرستد؛ بقیه‌ی مسیرها SPA هستند.
+nameOverride: ai-accounting-web
+fullnameOverride: ""
+
+image:
+  repository: harbor.rahap.site/ai/ai-accounting-web/playground
+  tag: latest
+  pullPolicy: IfNotPresent
+
+imagePullSecrets:
+  - name: reg-auth
+
+replicaCount: 1
+
+strategy:
+  type: Recreate
+  rollingUpdate: null
+
+minReadySeconds: 0
+
+podLabels: {}
+podAnnotations: {}
+
+env: []
+envFrom: []
+
+command: []
+args: []
+
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 20
+
+readinessProbe:
+  httpGet:
+    path: /healthz
+    port: http
+  initialDelaySeconds: 3
+  periodSeconds: 10
+
+startupProbe: {}
+
+resources:
+  limits:
+    cpu: 200m
+    memory: 128Mi
+  requests:
+    cpu: 10m
+    memory: 32Mi
+
+containerSecurityContext: {}
+podSecurityContext: {}
+
+service:
+  enabled: true
+  type: ClusterIP
+  port: 80
+  targetPort: 80
+  protocol: TCP
+  annotations: {}
+
+configmap:
+  enabled: false
+  data: {}
+  mount:
+    enabled: false
+    mountPath: /etc/config
+    readOnly: true
+
+secret:
+  enabled: false
+
+gateway:
+  enabled: false
+
+httproute:
+  enabled: true
+  parentRefs:
+    - name: general-gateway
+      namespace: gateway
+      sectionName: http
+  hostnames:
+    - "ai.pg.rahap.site"
+  rules:
+    # API پنل مشتری و gateway مدل‌ها (OpenAI/Anthropic-compatible) → بک‌اند لاراول.
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /api
+        - path:
+            type: PathPrefix
+            value: /v1
+      backendRefs:
+        - name: ai-accounting
+          port: 80
+          weight: 1
+      filters:
+        - type: RequestHeaderModifier
+          requestHeaderModifier:
+            set:
+              - name: X-Forwarded-Proto
+                value: https
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: "{{ include \"chart.fullname\" . }}"
+          port: 80
+          weight: 1
+
+# نود مخصوص playground (k8s-worker-3)
+nodeSelector:
+  workload-class: playground
+tolerations:
+  - key: dedicated
+    operator: Equal
+    value: playground
+    effect: NoSchedule
+affinity: {}

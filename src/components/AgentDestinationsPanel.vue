@@ -25,6 +25,7 @@ const channels: { type: DeliveryType; label: string; icon: string; hint: string 
   { type: 'bale', label: 'بله', icon: 'chat', hint: 'کانال یا گروه بله' },
   { type: 'email', label: 'ایمیل', icon: 'mail_outline', hint: 'یک یا چند نشانی ایمیل' },
   { type: 'webhook', label: 'وب‌هوک', icon: 'webhook', hint: 'n8n، Zapier، Slack و …' },
+  { type: 'rahap', label: 'پیام‌رسان رهاپ', icon: 'forum', hint: 'کانال، با وب‌هوک ورودی' },
 ];
 const iconOf = (type: DeliveryType) => channels.find((c) => c.type === type)?.icon ?? 'send';
 
@@ -71,7 +72,7 @@ async function save(): Promise<void> {
   const settings: Record<string, unknown> =
     draft.type === 'email'
       ? { emails: draft.emails }
-      : draft.type === 'webhook'
+      : draft.type === 'webhook' || draft.type === 'rahap'
         ? { url: draft.url }
         : { chat_id: draft.chat_id.trim(), bot_token: draft.bot_token.trim() || null };
   try {
@@ -270,6 +271,20 @@ function remove(destination: AgentDestination): void {
               label="نشانی‌های ایمیل"
               hint="هر نشانی را بنویسید و Enter بزنید"
             />
+            <template v-else-if="draft.type === 'rahap'">
+              <div class="note-banner text-caption">
+                در پیام‌رسان رهاپ، در کانال مقصد از «برنامه‌ها» وب‌هوک ورودی بسازید و آدرسش را این‌جا بگذارید.
+                گزارش هر اجرا به‌صورت یک پیام Markdown در همان کانال می‌آید.
+              </div>
+              <q-input
+                v-model="draft.url"
+                outlined
+                label="آدرس وب‌هوک ورودی"
+                placeholder="https://chat.example/hooks/..."
+                input-class="ltr"
+                :rules="[(v) => /\/hooks\/[A-Za-z0-9_-]+$/.test(v) || 'آدرس باید به /hooks/<secret> ختم شود']"
+              />
+            </template>
             <template v-else>
               <q-input
                 v-model="draft.url"

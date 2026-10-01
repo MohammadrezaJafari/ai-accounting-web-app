@@ -291,6 +291,8 @@ export interface Agent {
   /** Material icon name. */
   icon: string;
   category: string | null;
+  /** report = scheduled, delivers a document; interactive = lives in the Rahap messenger. */
+  kind: 'report' | 'interactive';
   publisher: { name: string; url: string | null } | null;
   unit_name: string;
   max_units_per_run: number;
@@ -307,7 +309,7 @@ export interface AgentCatalog {
 
 export type AgentConfig = Record<string, ConfigValue>;
 
-export type DeliveryType = 'telegram' | 'bale' | 'email' | 'webhook';
+export type DeliveryType = 'telegram' | 'bale' | 'email' | 'webhook' | 'rahap';
 
 export interface AgentDestination {
   id: number;
