@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { useMeta, useQuasar } from 'quasar';
+import { useRoute, useRouter } from 'vue-router';
 import { cancelOrder, errorMessage, listApps, listOrders } from '../api';
 import { faDateTime, orderStatuses, usd } from '../format';
 import type { App, Order } from '../types';
@@ -9,6 +10,8 @@ import TopUpPanel from '../components/TopUpPanel.vue';
 useMeta({ title: 'کیف پول | پلتفرم توسعه‌دهندگان' });
 
 const $q = useQuasar();
+const route = useRoute();
+const router = useRouter();
 const apps = ref<App[]>([]);
 const appId = ref<number | null>(null);
 const orders = ref<Order[] | null>(null);
@@ -33,7 +36,22 @@ async function cancel(order: Order): Promise<void> {
   }
 }
 
-onMounted(load);
+/** Back from the payment gateway (`?order=…&payment=paid|failed`). */
+function announcePayment(): void {
+  const outcome = route.query.payment;
+  if (outcome !== 'paid' && outcome !== 'failed') return;
+  $q.notify(
+    outcome === 'paid'
+      ? { type: 'positive', message: 'پرداخت انجام شد و کیف پول شارژ شد.' }
+      : { type: 'negative', message: 'پرداخت انجام نشد. اگر مبلغی کم شده، تا ۷۲ ساعت برمی‌گردد.' },
+  );
+  void router.replace({ query: {} });
+}
+
+onMounted(() => {
+  announcePayment();
+  void load();
+});
 </script>
 
 <template>

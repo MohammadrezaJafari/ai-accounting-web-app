@@ -109,11 +109,25 @@ async function save(): Promise<void> {
   }
 }
 
-async function runNow(): Promise<void> {
+/** Agents that take input per run ask for it in a dialog first. */
+const askingInput = ref(false);
+const runInput = ref('');
+
+function requestRun(): void {
+  if (agent.value?.run_input_label) {
+    runInput.value = '';
+    askingInput.value = true;
+  } else {
+    void runNow();
+  }
+}
+
+async function runNow(input?: string): Promise<void> {
   if (!instance.value) return;
   starting.value = true;
   try {
-    await runAgentInstance(instance.value.id);
+    await runAgentInstance(instance.value.id, input);
+    askingInput.value = false;
     tab.value = 'reports';
     await runsPanel.value?.refresh();
   } catch (exception) {
@@ -197,7 +211,7 @@ onMounted(load);
           icon="play_arrow"
           label="اجرای الان"
           :loading="starting"
-          @click="runNow"
+          @click="requestRun"
         />
       </div>
     </div>
@@ -274,6 +288,38 @@ onMounted(load);
         />
       </div>
     </div>
+
+    <q-dialog v-model="askingInput">
+      <q-card style="width: 520px; max-width: 92vw; border-radius: 18px">
+        <q-form @submit.prevent="runNow(runInput)">
+          <q-card-section><div class="text-h6">اجرای الان</div></q-card-section>
+          <q-card-section>
+            <q-input
+              v-model="runInput"
+              outlined
+              type="textarea"
+              autogrow
+              autofocus
+              maxlength="4000"
+              :label="agent?.run_input_label ?? 'ورودی'"
+              :rules="[(v) => !!v?.trim() || 'لازم است']"
+            />
+          </q-card-section>
+          <q-card-actions align="left" class="q-pa-md">
+            <q-btn flat no-caps color="grey" label="انصراف" v-close-popup />
+            <q-btn
+              type="submit"
+              unelevated
+              no-caps
+              class="btn-pill"
+              icon="play_arrow"
+              label="اجرا"
+              :loading="starting"
+            />
+          </q-card-actions>
+        </q-form>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 

@@ -2,7 +2,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { useMeta, useQuasar } from 'quasar';
 import { useRoute, useRouter } from 'vue-router';
-import { agentCatalog, buyAgentPackage, errorMessage, listApps } from '../api';
+import { agentCatalog, buyAgentPackage, claimAgentTrial, errorMessage, listApps } from '../api';
 import { faNumber, usd } from '../format';
 import { renderMarkdown } from '../markdown';
 import { useAuthStore } from '../stores/auth';
@@ -87,6 +87,23 @@ async function purchase(): Promise<void> {
   }
 }
 
+async function claimTrial(): Promise<void> {
+  if (!agent.value) return;
+  busy.value = true;
+  try {
+    agent.value.credits = (await claimAgentTrial(agent.value.id)).credits;
+    agent.value.trial_available = false;
+    $q.notify({
+      type: 'positive',
+      message: `${faNumber(agent.value.free_trial_units)} ${agent.value.unit_name} رایگان اضافه شد.`,
+    });
+  } catch (exception) {
+    $q.notify({ type: 'negative', message: errorMessage(exception) });
+  } finally {
+    busy.value = false;
+  }
+}
+
 onMounted(load);
 </script>
 
@@ -129,6 +146,17 @@ onMounted(load);
             <div class="credits-value">{{ faNumber(agent.credits) }}</div>
             <div class="credits-label">{{ agent.unit_name }} باقی‌مانده</div>
           </div>
+          <q-btn
+            v-if="agent.trial_available && auth.can('manage-apps')"
+            outline
+            no-caps
+            color="primary"
+            class="btn-pill full-width"
+            icon="redeem"
+            :label="`${faNumber(agent.free_trial_units)} ${agent.unit_name} رایگان برای آزمایش`"
+            :loading="busy"
+            @click="claimTrial"
+          />
           <q-btn
             v-if="auth.can('manage-apps')"
             unelevated

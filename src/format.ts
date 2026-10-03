@@ -107,6 +107,7 @@ export const transactionTypes: Record<string, string> = {
   adjustment: 'اصلاح دستی',
   refund: 'بازپرداخت',
   agent_purchase: 'خرید بستهٔ ایجنت',
+  publisher_deposit: 'جبران بدهی ناشر',
 };
 
 /** Base URL apps use for the gateway (same origin as the web app unless configured). */

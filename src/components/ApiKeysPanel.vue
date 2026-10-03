@@ -35,6 +35,7 @@ const draft = reactive<{
   allowed_models: string[];
   spend_limit: string;
   spend_limit_period: BudgetPeriod;
+  rate_limit_per_minute: string;
   expires_at: string;
 }>({
   app_id: null,
@@ -43,6 +44,7 @@ const draft = reactive<{
   allowed_models: [],
   spend_limit: '',
   spend_limit_period: 'total',
+  rate_limit_per_minute: '',
   expires_at: '',
 });
 const periodOptions = (Object.keys(budgetPeriods) as BudgetPeriod[]).map((value) => ({
@@ -87,6 +89,7 @@ function open(key: ApiKey | null): void {
   draft.allowed_models = key?.allowed_models ?? [];
   draft.spend_limit = key?.spend_limit ?? '';
   draft.spend_limit_period = key?.spend_limit_period ?? 'total';
+  draft.rate_limit_per_minute = key?.rate_limit_per_minute?.toString() ?? '';
   draft.expires_at = key?.expires_at?.slice(0, 10) ?? '';
   dialog.value = true;
 }
@@ -103,6 +106,8 @@ async function save(): Promise<void> {
     allowed_models: draft.allowed_models.length ? draft.allowed_models : null,
     spend_limit: draft.spend_limit === '' ? null : String(draft.spend_limit),
     spend_limit_period: draft.spend_limit_period,
+    rate_limit_per_minute:
+      draft.rate_limit_per_minute === '' ? null : Number(draft.rate_limit_per_minute),
     expires_at: draft.expires_at || null,
   };
   try {
@@ -206,6 +211,9 @@ onMounted(load);
           >
         </div>
         <div class="key-spend">
+          <div v-if="key.effective_rate_limit_per_minute" class="faint text-caption">
+            سقف {{ key.effective_rate_limit_per_minute.toLocaleString('fa-IR') }} درخواست در دقیقه
+          </div>
           <BudgetBar v-if="key.spend_limit !== null" :budget="key" compact />
           <template v-else>
             <div class="faint text-caption">هزینه‌شده (بدون سقف)</div>
@@ -315,6 +323,16 @@ onMounted(load);
                 :disable="draft.spend_limit === ''"
               />
               <q-input
+                v-model="draft.rate_limit_per_minute"
+                outlined
+                type="number"
+                min="1"
+                step="1"
+                label="درخواست در دقیقه"
+                hint="خالی = پیش‌فرض پلتفرم"
+                input-class="ltr"
+              />
+              <q-input
                 v-model="draft.expires_at"
                 class="expires"
                 outlined
@@ -353,7 +371,7 @@ onMounted(load);
 }
 .limits {
   display: grid;
-  grid-template-columns: 1.2fr 1fr 1.5fr;
+  grid-template-columns: 1fr 1fr;
   gap: 12px;
 }
 @media (max-width: 599px) {

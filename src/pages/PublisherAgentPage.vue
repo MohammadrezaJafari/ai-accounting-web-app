@@ -50,6 +50,7 @@ const previewConfig = ref<AgentConfig>({});
 const testConfig = ref<AgentConfig>({});
 const runs = ref<PublisherRun[]>([]);
 const testRun = ref<PublisherRun | null>(null);
+const testInput = ref('');
 const testing = ref(false);
 const pinging = ref(false);
 const manifestUrl = ref('');
@@ -74,6 +75,8 @@ function emptyDraft(): PublisherAgentDraft {
     category: null,
     unit_name: 'گزارش',
     max_units_per_run: 1,
+    free_trial_units: 0,
+    run_input_label: null,
     endpoint_url: null,
     timeout_seconds: 60,
     run_deadline_minutes: 15,
@@ -98,6 +101,8 @@ function toDraft(value: PublisherAgent): PublisherAgentDraft {
       category: merged.category,
       unit_name: merged.unit_name,
       max_units_per_run: merged.max_units_per_run,
+      free_trial_units: merged.free_trial_units ?? 0,
+      run_input_label: merged.run_input_label ?? null,
       endpoint_url: merged.endpoint_url,
       timeout_seconds: merged.timeout_seconds,
       run_deadline_minutes: merged.run_deadline_minutes,
@@ -215,7 +220,11 @@ async function runTest(): Promise<void> {
   if (dirty.value) await save();
   testing.value = true;
   try {
-    const run = await startPublisherTestRun(agent.value!.id, testConfig.value);
+    const run = await startPublisherTestRun(
+      agent.value!.id,
+      testConfig.value,
+      draft.value.run_input_label ? testInput.value : undefined,
+    );
     testRun.value = { ...(run as unknown as PublisherRun), notes: [], warnings: [], cost: '0' };
     clearInterval(poll);
     const started = Date.now();
@@ -427,6 +436,14 @@ onBeforeUnmount(() => clearInterval(poll));
                 label="حداکثر واحد در هر اجرا"
                 hint="اگر خروجی هر اجرا چند واحد می‌ارزد (مثلاً به ازای هر مورد پیدا شده)"
               />
+              <q-input
+                v-model.number="draft.free_trial_units"
+                outlined
+                type="number"
+                min="0"
+                :label="`${draft.unit_name} رایگان برای آزمایش`"
+                hint="هر سازمان یک بار می‌گیرد؛ سهمی از آن نمی‌برید و هزینهٔ مدلش با شماست. ۰ = بدون آزمایش"
+              />
             </div>
             <div class="packages q-mt-md">
               <div v-for="(pack, index) in draft.packages" :key="index" class="pack">
@@ -510,7 +527,19 @@ onBeforeUnmount(() => clearInterval(poll));
 
         <!-- Parameters -->
         <div v-else-if="tab === 'parameters'" class="params">
-          <ConfigSchemaEditor v-model="draft.config_schema" />
+          <div>
+            <ConfigSchemaEditor v-model="draft.config_schema" />
+            <div class="panel panel-pad q-mt-md">
+              <q-input
+                v-model="draft.run_input_label"
+                outlined
+                clearable
+                label="ورودی هر اجرای دستی (اختیاری)"
+                placeholder="مثلاً: لینکی که باید خلاصه شود"
+                hint="اگر پر شود، مشتری در هر اجرای دستی این را وارد می‌کند و در input درخواست به سرویس شما می‌رسد"
+              />
+            </div>
+          </div>
           <aside>
             <div class="field-label">فرمی که مشتری می‌بیند</div>
             <div class="panel panel-pad">
@@ -615,6 +644,16 @@ onBeforeUnmount(() => clearInterval(poll));
                   v-if="draft.config_schema.length"
                   v-model="testConfig"
                   :fields="draft.config_schema"
+                />
+                <q-input
+                  v-if="draft.run_input_label"
+                  v-model="testInput"
+                  class="q-mt-md"
+                  outlined
+                  type="textarea"
+                  autogrow
+                  :label="draft.run_input_label"
+                  hint="ورودی همین اجرا؛ در input درخواست می‌رسد"
                 />
                 <q-btn
                   unelevated

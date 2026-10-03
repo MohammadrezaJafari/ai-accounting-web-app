@@ -110,6 +110,10 @@ export interface ApiKey extends Budget {
   allowed_providers: string[] | null;
   allowed_models: string[] | null;
   spent: Usd;
+  /** Requests per minute set on the key; null follows the platform default. */
+  rate_limit_per_minute: number | null;
+  /** The limit that applies (0 = unlimited). */
+  effective_rate_limit_per_minute: number;
   expires_at: string | null;
   last_used_at: string | null;
   is_active: boolean;
@@ -122,6 +126,7 @@ export interface ApiKeyDraft {
   allowed_models: string[] | null;
   spend_limit: string | null;
   spend_limit_period: BudgetPeriod;
+  rate_limit_per_minute: number | null;
   expires_at: string | null;
   is_active?: boolean;
 }
@@ -177,7 +182,7 @@ export interface Order {
 export interface WalletTransaction {
   id: number;
   app_id: number;
-  type: 'topup' | 'adjustment' | 'refund';
+  type: 'topup' | 'adjustment' | 'refund' | 'agent_purchase' | 'publisher_deposit';
   amount: Usd;
   balance_after: Usd;
   description: string | null;
@@ -297,8 +302,14 @@ export interface Agent {
   unit_name: string;
   max_units_per_run: number;
   config_schema: ConfigField[];
+  /** When set, each manual run asks the customer for this input. */
+  run_input_label: string | null;
   /** Units the current organization has left. */
   credits: number;
+  /** Free units each organization may claim once. */
+  free_trial_units: number;
+  /** Whether the current organization can still claim them. */
+  trial_available: boolean;
   packages: AgentPackage[];
 }
 
@@ -336,6 +347,8 @@ export interface AgentRun {
   agent_instance_id: number;
   status: AgentRunStatus;
   trigger: 'schedule' | 'manual';
+  /** What the customer typed for a manual run. */
+  input: string | null;
   units: number;
   items_found: number;
   error: string | null;
@@ -407,6 +420,10 @@ export interface PublisherAgentDraft {
   category: string | null;
   unit_name: string;
   max_units_per_run: number;
+  /** Free units each organization may claim once; their model cost is the publisher's. */
+  free_trial_units: number;
+  /** When set, each manual run asks the customer for this input (sent as `input`). */
+  run_input_label: string | null;
   endpoint_url: string | null;
   timeout_seconds: number;
   run_deadline_minutes: number;
@@ -466,6 +483,8 @@ export interface PublisherRun {
   id: number;
   status: AgentRunStatus;
   trigger: 'schedule' | 'manual' | 'test';
+  /** Only on test runs. */
+  input: string | null;
   units: number;
   items_found: number;
   error: string | null;
@@ -480,6 +499,9 @@ export interface PublisherRun {
 
 export interface PublisherPayout {
   id: number;
+  /** `payout`: the platform paid the publisher; `deposit`: the publisher covered its debt from an app wallet. */
+  type: 'payout' | 'deposit';
+  app?: { id: number; name: string } | null;
   amount: string;
   reference: string | null;
   note: string | null;
@@ -504,6 +526,9 @@ export interface PublisherOverview {
     /** share − model_cost */
     earned: string;
     paid: string;
+    /** Moved in from the organization's app wallets to cover debt. */
+    deposits: string;
+    /** earned − paid + deposits */
     balance: string;
     customers: number;
     live_agents: number;
@@ -511,6 +536,11 @@ export interface PublisherOverview {
   /** The balance is below the allowed debt, so test runs are stopped. */
   test_runs_blocked: boolean;
   test_run_debt_limit: string;
+  /** The platform settles the balance once it reaches this amount (USD). */
+  payout_min: string;
+  payout_due: boolean;
+  /** USD limits of one deposit. */
+  deposit_limits: { min: string; max: string };
   daily: { date: string; earned: string; units: number }[];
   payouts: PublisherPayout[];
 }

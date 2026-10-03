@@ -23,6 +23,7 @@ import type {
   PublisherAgent,
   PublisherAgentDraft,
   PublisherOverview,
+  PublisherPayout,
   PublisherRun,
   Session,
   UsageLog,
@@ -161,6 +162,8 @@ export const acceptInvitation = async (token: string) =>
   (await post<{ data: Organization }>(`/invitations/${encodeURIComponent(token)}/accept`)).data;
 
 export const agentCatalog = () => request<AgentCatalog>('/agents');
+export const claimAgentTrial = (agentId: number) =>
+  post<{ credits: number }>(`/agents/${agentId}/trial`);
 export const buyAgentPackage = (agentId: number, packageId: number, appId: number) =>
   post<{ credits: number; app_balance: string }>(`/agents/${agentId}/purchase`, {
     package_id: packageId,
@@ -176,8 +179,13 @@ export const createAgentInstance = async (draft: AgentInstanceDraft) =>
 export const updateAgentInstance = async (id: number, draft: Partial<AgentInstanceDraft>) =>
   (await patch<{ data: AgentInstance }>(`/agent-instances/${id}`, draft)).data;
 export const deleteAgentInstance = (id: number) => destroy(`/agent-instances/${id}`);
-export const runAgentInstance = async (id: number) =>
-  (await post<{ data: AgentRun }>(`/agent-instances/${id}/run`)).data;
+export const runAgentInstance = async (id: number, input?: string) =>
+  (
+    await post<{ data: AgentRun }>(
+      `/agent-instances/${id}/run`,
+      input === undefined ? {} : { input },
+    )
+  ).data;
 export const listAgentRuns = (id: number, page = 1) =>
   request<Paginated<AgentRun>>(`/agent-instances/${id}/runs?page=${page}`);
 export const getAgentRun = async (id: number) =>
@@ -301,6 +309,8 @@ export async function streamChat(
 export const getPublisher = () => request<PublisherOverview>('/publisher');
 export const updatePublisher = (payload: Partial<PublisherOverview['profile']>) =>
   patch<{ ok: boolean }>('/publisher', payload);
+export const depositToPublisher = async (appId: number, amount: string) =>
+  (await post<{ data: PublisherPayout }>('/publisher/deposits', { app_id: appId, amount })).data;
 export const listPublisherAgents = async () =>
   (await request<{ data: PublisherAgent[] }>('/publisher/agents')).data;
 export const getPublisherAgent = async (id: number) =>
@@ -316,8 +326,8 @@ export const pingPublisherAgent = (id: number) =>
   post<{ ok: boolean; error: string | null }>(`/publisher/agents/${id}/ping`);
 export const rotatePublisherSecret = async (id: number) =>
   (await post<{ data: PublisherAgent }>(`/publisher/agents/${id}/rotate-secret`)).data;
-export const startPublisherTestRun = async (id: number, config: AgentConfig) =>
-  (await post<{ data: AgentRun }>(`/publisher/agents/${id}/test-runs`, { config })).data;
+export const startPublisherTestRun = async (id: number, config: AgentConfig, input?: string) =>
+  (await post<{ data: AgentRun }>(`/publisher/agents/${id}/test-runs`, { config, input })).data;
 export const listPublisherRuns = async (id: number) =>
   (await request<{ data: PublisherRun[] }>(`/publisher/agents/${id}/runs`)).data;
 export const getPublisherRun = async (id: number, runId: number) =>

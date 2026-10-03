@@ -1,10 +1,17 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useMeta, useQuasar } from 'quasar';
-import { errorMessage, getPublisher, listPublisherAgents, updatePublisher } from '../api';
+import {
+  depositToPublisher,
+  errorMessage,
+  getPublisher,
+  listApps,
+  listPublisherAgents,
+  updatePublisher,
+} from '../api';
 import { faDateTime, faNumber, usd } from '../format';
 import { useAuthStore } from '../stores/auth';
-import type { PublisherAgent, PublisherAgentStatus, PublisherOverview } from '../types';
+import type { App, PublisherAgent, PublisherAgentStatus, PublisherOverview } from '../types';
 import DailyBars from '../components/DailyBars.vue';
 
 /** The organization as a marketplace publisher: its agents, earnings, payouts and public profile. */
@@ -31,6 +38,55 @@ const daily = computed(() =>
     requests: day.units,
   })),
 );
+
+const debt = computed(() => Math.max(0, -Number(overview.value?.summary.balance ?? 0)));
+
+/** Covering the debt from one of the organization's app wallets. */
+const depositing = ref(false);
+const depositBusy = ref(false);
+const apps = ref<App[]>([]);
+const deposit = reactive<{ appId: number | null; amount: string }>({ appId: null, amount: '' });
+const appOptions = computed(() =>
+  apps.value.map((app) => ({
+    label: app.name,
+    caption: `موجودی ${usd(app.balance)}`,
+    value: app.id,
+    disable: Number(app.balance) <= 0,
+  })),
+);
+
+async function openDeposit(): Promise<void> {
+  const limits = overview.value?.deposit_limits;
+  const amount = Math.min(
+    Math.max(debt.value, Number(limits?.min ?? 0)),
+    Number(limits?.max ?? debt.value),
+  );
+  deposit.amount = amount.toFixed(2);
+  deposit.appId = null;
+  depositing.value = true;
+  try {
+    apps.value = await listApps();
+    deposit.appId =
+      apps.value.find((app) => Number(app.balance) >= Number(deposit.amount))?.id ?? null;
+  } catch (exception) {
+    $q.notify({ type: 'negative', message: errorMessage(exception) });
+  }
+}
+
+async function submitDeposit(): Promise<void> {
+  if (deposit.appId === null) return;
+  depositBusy.value = true;
+  try {
+    await depositToPublisher(deposit.appId, deposit.amount);
+    depositing.value = false;
+    $q.notify({ type: 'positive', message: 'مبلغ به حساب ناشر منتقل شد.' });
+    await load();
+  } catch (exception) {
+    $q.notify({ type: 'negative', message: errorMessage(exception) });
+  } finally {
+    depositBusy.value = false;
+  }
+}
 
 const statusColors: Record<PublisherAgentStatus, string> = {
   draft: 'grey-8',
@@ -97,20 +153,41 @@ onMounted(load);
     </div>
 
     <template v-else>
-      <div v-if="overview.test_runs_blocked" class="error-banner q-mb-md">
-        بدهی حساب شما از
-        <span class="ltr">{{ usd(overview.test_run_debt_limit) }}</span> بیشتر شده است؛ اجرای
-        آزمایشی تا جبران آن بسته است. اجرای مشتری‌ها ادامه دارد.
-      </div>
-      <div v-else-if="Number(overview.summary.balance) < 0" class="note-banner q-mb-md">
-        مانده شما منفی است. اگر بدهی از
-        <span class="ltr">{{ usd(overview.test_run_debt_limit) }}</span> بیشتر شود، اجرای آزمایشی
-        بسته می‌شود.
+      <div
+        v-if="debt > 0"
+        class="debt q-mb-md"
+        :class="overview.test_runs_blocked ? 'error-banner' : 'note-banner'"
+      >
+        <span v-if="overview.test_runs_blocked" class="col">
+          بدهی حساب شما از
+          <span class="ltr">{{ usd(overview.test_run_debt_limit) }}</span> بیشتر شده است؛ اجرای
+          آزمایشی تا جبران آن بسته است. اجرای مشتری‌ها ادامه دارد.
+        </span>
+        <span v-else class="col">
+          مانده شما منفی است. اگر بدهی از
+          <span class="ltr">{{ usd(overview.test_run_debt_limit) }}</span> بیشتر شود، اجرای آزمایشی
+          بسته می‌شود.
+        </span>
+        <q-btn
+          v-if="canBill"
+          unelevated
+          no-caps
+          class="btn-pill"
+          icon="account_balance_wallet"
+          label="جبران از کیف پول"
+          @click="openDeposit"
+        />
       </div>
       <div class="tiles q-mb-lg">
         <div class="tile accent" :class="{ negative: Number(overview.summary.balance) < 0 }">
           <div class="tile-value ltr">{{ usd(overview.summary.balance) }}</div>
           <div class="tile-label">مانده برای تسویه</div>
+          <div class="tile-note">
+            <template v-if="overview.payout_due">در نوبت تسویه</template>
+            <template v-else>
+              تسویه از <span class="ltr">{{ usd(overview.payout_min) }}</span> به بالا
+            </template>
+          </div>
         </div>
         <div class="tile">
           <div class="tile-value ltr">{{ usd(overview.summary.earned) }}</div>
@@ -195,6 +272,12 @@ onMounted(load);
           <div v-for="payout in overview.payouts" :key="payout.id" class="payout">
             <span class="col">
               <span class="ink-strong ltr">{{ usd(payout.amount) }}</span>
+              <q-badge
+                class="q-ml-sm"
+                :color="payout.type === 'deposit' ? 'info' : 'positive'"
+                outline
+                :label="payout.type === 'deposit' ? 'واریز شما' : 'پرداخت به شما'"
+              />
               <span v-if="payout.note" class="faint text-caption block">{{ payout.note }}</span>
             </span>
             <span class="faint text-caption">
@@ -204,7 +287,10 @@ onMounted(load);
           </div>
           <p class="faint text-caption q-mt-md q-mb-none">
             سهم شما از هر فروش و هزینهٔ مدل‌هایی که ایجنت‌تان صدا می‌زند در همان اجرا در حسابتان ثبت
-            می‌شود و پلتفرم مانده را به حسابی که وارد کرده‌اید تسویه می‌کند.
+            می‌شود و پلتفرم مانده را، وقتی به
+            <span class="ltr">{{ usd(overview.payout_min) }}</span> برسد، به حسابی که وارد کرده‌اید
+            تسویه می‌کند. اگر مانده منفی شود، می‌توانید آن را از کیف پول یکی از اپ‌هایتان جبران
+            کنید.
           </p>
         </div>
 
@@ -253,6 +339,62 @@ onMounted(load);
         </div>
       </div>
     </template>
+
+    <q-dialog v-model="depositing">
+      <q-card style="width: 440px; max-width: 92vw; border-radius: 18px">
+        <q-form @submit.prevent="submitDeposit">
+          <q-card-section>
+            <div class="text-h6">جبران بدهی از کیف پول</div>
+            <div class="faint text-caption">
+              مبلغ از کیف پول اپ انتخابی کم و به حساب ناشر اضافه می‌شود.
+            </div>
+          </q-card-section>
+          <q-card-section class="column q-gutter-md">
+            <q-select
+              v-model="deposit.appId"
+              outlined
+              emit-value
+              map-options
+              :options="appOptions"
+              label="اپ"
+              :rules="[(v) => v !== null || 'یک اپ انتخاب کنید']"
+            >
+              <template #option="scope">
+                <q-item v-bind="scope.itemProps">
+                  <q-item-section>
+                    <q-item-label>{{ scope.opt.label }}</q-item-label>
+                    <q-item-label caption class="ltr">{{ scope.opt.caption }}</q-item-label>
+                  </q-item-section>
+                </q-item>
+              </template>
+            </q-select>
+            <q-input
+              v-model="deposit.amount"
+              outlined
+              type="number"
+              step="0.01"
+              :min="overview?.deposit_limits.min"
+              :max="overview?.deposit_limits.max"
+              label="مبلغ (دلار)"
+              input-class="ltr"
+              :hint="`بدهی فعلی: ${usd(debt.toFixed(2))}`"
+              :rules="[(v) => Number(v) > 0 || 'مبلغ لازم است']"
+            />
+          </q-card-section>
+          <q-card-actions align="left" class="q-pa-md">
+            <q-btn flat no-caps color="grey" label="انصراف" v-close-popup />
+            <q-btn
+              type="submit"
+              unelevated
+              no-caps
+              class="btn-pill"
+              label="انتقال"
+              :loading="depositBusy"
+            />
+          </q-card-actions>
+        </q-form>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
@@ -335,6 +477,12 @@ onMounted(load);
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
   align-items: start;
+}
+.debt {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 .payout {
   display: flex;
